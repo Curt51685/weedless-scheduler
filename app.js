@@ -62,6 +62,7 @@ const refs = {
   dashboardSummary: document.getElementById("dashboardSummary"),
   todayJobForm: document.getElementById("todayJobForm"),
   todayJobFormTitle: document.getElementById("todayJobFormTitle"),
+  openTodayJobFormBtn: document.getElementById("openTodayJobFormBtn"),
   todayJobId: document.getElementById("todayJobId"),
   todayJobCustomer: document.getElementById("todayJobCustomer"),
   todayJobServiceType: document.getElementById("todayJobServiceType"),
@@ -252,6 +253,7 @@ function wireEvents() {
   refs.customerForm.addEventListener("submit", handleSaveCustomer);
   refs.cancelCustomerEditBtn.addEventListener("click", resetCustomerForm);
   refs.cancelTodayJobEditBtn.addEventListener("click", resetTodayJobForm);
+  refs.openTodayJobFormBtn.addEventListener("click", openTodayJobFormForCreate);
   refs.jobServiceType.addEventListener("change", syncRoundFieldVisibility);
   refs.todayJobServiceType.addEventListener("change", syncTodayRoundFieldVisibility);
   document.getElementById("jobDuration").addEventListener("change", syncTomorrowEndTime);
@@ -697,7 +699,7 @@ function handleSaveTodayJob(event) {
   sortJobs(todayKey);
   reindexJobs(todayKey);
   saveState();
-  resetTodayJobForm();
+  closeTodayJobForm();
   renderTodayJobs();
 }
 
@@ -780,7 +782,8 @@ function startTodayJobEdit(jobId) {
   const job = getJobsForDate(getTodayKey()).find((entry) => entry.id === jobId);
   if (!job) return;
 
-  refs.todayJobFormTitle.textContent = "Edit Today Job";
+  openTodayJobForm();
+  refs.todayJobFormTitle.textContent = "Edit Job Today";
   refs.todayJobId.value = job.id;
   refs.todayJobCustomer.value = job.customerId;
   refs.todayJobServiceType.value = job.serviceType;
@@ -802,13 +805,30 @@ function resetCustomerForm() {
 function resetTodayJobForm() {
   refs.todayJobForm.reset();
   refs.todayJobId.value = "";
-  refs.todayJobFormTitle.textContent = "Add Today Job";
+  refs.todayJobFormTitle.textContent = "Add Job Today";
   document.getElementById("todayJobDuration").value = 60;
   document.getElementById("todayJobOrder").value = getJobsForDate(getTodayKey()).length + 1;
   document.getElementById("todayJobTimeStart").value = "08:00";
   document.getElementById("todayJobTimeEnd").value = "09:00";
   refs.todayJobServiceRound.value = "1";
   syncTodayRoundFieldVisibility();
+}
+
+function openTodayJobForm() {
+  refs.todayJobForm.hidden = false;
+  refs.todayJobForm.style.display = "";
+}
+
+function closeTodayJobForm() {
+  resetTodayJobForm();
+  refs.todayJobForm.hidden = true;
+  refs.todayJobForm.style.display = "none";
+}
+
+function openTodayJobFormForCreate() {
+  resetTodayJobForm();
+  openTodayJobForm();
+  refs.todayJobForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function deleteCustomer(customerId) {

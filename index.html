@@ -38,10 +38,13 @@
             <h2>Today's Schedule</h2>
             <p>Run the day from your phone and keep customers updated.</p>
           </div>
+          <div class="heading-actions">
+            <button id="openTodayJobFormBtn">Add Job Today</button>
+          </div>
         </div>
         <div id="dashboardSummary" class="summary-grid"></div>
-        <form id="todayJobForm" class="panel form-grid">
-          <h3 id="todayJobFormTitle">Add Today Job</h3>
+        <form id="todayJobForm" class="panel form-grid" hidden>
+          <h3 id="todayJobFormTitle">Add Job Today</h3>
           <input id="todayJobId" type="hidden">
           <label>
             Customer
@@ -93,7 +96,7 @@
             <input id="todayJobTimeEnd" type="time" value="09:00">
           </label>
           <div class="form-actions">
-            <button type="submit">Save Today Job</button>
+            <button type="submit">Save Job Today</button>
             <button type="button" class="secondary" id="cancelTodayJobEditBtn">Cancel</button>
           </div>
         </form>
