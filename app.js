@@ -916,7 +916,7 @@ function copyAllMessages() {
 }
 
 function buildNightBeforeMessage(job) {
-  return `Hey ${getFirstName(job.customerName)}, this is Weedless Lawn Care & Irrigation. I've got you scheduled for tomorrow with an arrival window of ${job.timeWindow} for ${formatServiceLabel(job)}. Let me know if that works. Thanks!`;
+  return `Hey ${getFirstName(job.customerName)}, this is Weedless Lawn Care & Irrigation. I've got you scheduled for tomorrow with an arrival window of ${job.timeWindow} for ${formatServiceLabel(job)}. Thanks!`;
 }
 
 function syncCustomerReferences(customer) {
