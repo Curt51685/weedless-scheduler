@@ -1,0 +1,9 @@
+{
+  "name": "weedless-scheduler",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Weedless Scheduler with optional Twilio SMS sending",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

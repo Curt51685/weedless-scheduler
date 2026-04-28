@@ -1,0 +1,399 @@
+:root {
+  --bg: #f4efe3;
+  --surface: #fffaf0;
+  --surface-strong: #fff;
+  --text: #223224;
+  --muted: #657161;
+  --brand: #295b2d;
+  --brand-strong: #183c1b;
+  --accent: #d99c2b;
+  --border: #d9d0bf;
+  --danger: #b4472d;
+  --shadow: 0 12px 28px rgba(34, 50, 36, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(217, 156, 43, 0.15), transparent 24%),
+    linear-gradient(180deg, #f8f3e8 0%, var(--bg) 100%);
+  color: var(--text);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  border-radius: 14px;
+  padding: 0.9rem 1rem;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 700;
+}
+
+button.secondary {
+  background: #e8eddc;
+  color: var(--brand-strong);
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--brand);
+  border: 1px solid var(--border);
+}
+
+button.warn {
+  background: var(--danger);
+}
+
+button:disabled {
+  opacity: 0.55;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.85rem 0.95rem;
+  background: var(--surface-strong);
+  color: var(--text);
+}
+
+label {
+  display: grid;
+  gap: 0.45rem;
+  font-weight: 700;
+  color: var(--brand-strong);
+}
+
+.app-shell {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 0 1rem 3rem;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 1rem;
+  padding: 1rem 0 0.75rem;
+  background: linear-gradient(180deg, rgba(244, 239, 227, 0.97), rgba(244, 239, 227, 0.88));
+  backdrop-filter: blur(10px);
+}
+
+.eyebrow {
+  margin: 0 0 0.2rem;
+  color: var(--brand);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+}
+
+.header-meta {
+  text-align: right;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.sms-status {
+  margin-top: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.65rem;
+  border-radius: 999px;
+  background: #ece7d7;
+  color: var(--brand-strong);
+  font-size: 0.82rem;
+}
+
+.sms-status.live {
+  background: #dceacc;
+}
+
+.tabs {
+  position: sticky;
+  top: 4.9rem;
+  z-index: 25;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  padding: 0.7rem 0 1rem;
+  background: linear-gradient(180deg, rgba(244, 239, 227, 0.96), rgba(244, 239, 227, 0.88));
+}
+
+.tab-button {
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--brand-strong);
+  border: 1px solid var(--border);
+}
+
+.tab-button.active {
+  background: var(--brand);
+  color: #fff;
+}
+
+main {
+  display: grid;
+  gap: 1rem;
+}
+
+.view {
+  display: none;
+  gap: 1rem;
+}
+
+.view.active {
+  display: grid;
+}
+
+.section-heading,
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+
+.section-heading p,
+.panel-header p {
+  color: var(--muted);
+}
+
+.heading-actions {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.summary-grid,
+.section-split {
+  display: grid;
+  gap: 1rem;
+}
+
+.summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.summary-card,
+.panel,
+.job-card,
+.message-card,
+.customer-card {
+  background: rgba(255, 250, 240, 0.94);
+  border: 1px solid rgba(217, 208, 191, 0.85);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+}
+
+.summary-card,
+.job-card,
+.message-card,
+.customer-card {
+  padding: 1rem;
+}
+
+.panel {
+  padding: 1rem;
+}
+
+.summary-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 0.35rem;
+}
+
+.summary-card strong {
+  font-size: 1.45rem;
+}
+
+.card-stack {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.card-stack.compact .job-card {
+  padding: 0.9rem;
+}
+
+.job-card.next-job {
+  border-color: var(--accent);
+  box-shadow: 0 14px 28px rgba(217, 156, 43, 0.18);
+}
+
+.job-topline,
+.customer-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+
+.job-order,
+.job-service,
+.job-address,
+.job-meta,
+.customer-body,
+.message-body {
+  color: var(--muted);
+}
+
+.job-service {
+  margin-top: 0.45rem;
+  color: var(--brand-strong);
+  font-weight: 700;
+}
+
+.job-address {
+  margin-top: 0.35rem;
+}
+
+.job-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+}
+
+.meta-chip,
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.meta-chip {
+  background: #eef2e4;
+  color: var(--brand-strong);
+}
+
+.status-pill {
+  background: #ece7d7;
+  color: var(--brand-strong);
+}
+
+.status-scheduled {
+  background: #ece7d7;
+}
+
+.status-on-my-way {
+  background: #f6e2b6;
+}
+
+.status-started {
+  background: #dceacc;
+}
+
+.status-completed {
+  background: #cde6cf;
+}
+
+.job-actions,
+.customer-actions,
+.message-actions,
+.form-actions {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+
+.form-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+.message-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.message-card pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font: inherit;
+}
+
+.empty-state {
+  padding: 1rem;
+  border: 1px dashed var(--border);
+  border-radius: 18px;
+  color: var(--muted);
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  padding: 0.8rem 1rem;
+  background: rgba(24, 60, 27, 0.94);
+  color: #fff;
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  z-index: 40;
+}
+
+@media (min-width: 760px) {
+  .heading-actions {
+    grid-auto-flow: column;
+  }
+
+  .section-split {
+    grid-template-columns: 1.15fr 0.85fr;
+  }
+
+  .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .job-actions {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .message-actions,
+  .customer-actions,
+  .form-actions {
+    grid-auto-flow: column;
+    justify-content: start;
+  }
+}

@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#295b2d">
+  <meta name="description" content="Weedless Scheduler for Weedless Lawn Care & Irrigation">
+  <title>Weedless Scheduler</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Weedless Lawn Care & Irrigation</p>
+        <h1>Weedless Scheduler</h1>
+      </div>
+      <div class="header-meta">
+        <div id="headerDate"></div>
+        <div id="smsStatus" class="sms-status">SMS fallback mode</div>
+        <div id="syncStatus" class="sms-status">Local-only mode</div>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="Primary">
+      <button class="tab-button active" data-view="dashboard">Today</button>
+      <button class="tab-button" data-view="schedule">Tomorrow</button>
+      <button class="tab-button" data-view="customers">Customers</button>
+    </nav>
+
+    <main id="appContent">
+      <section class="view active" id="dashboardView" data-view="dashboard">
+        <div class="section-heading">
+          <div>
+            <h2>Today's Schedule</h2>
+            <p>Run the day from your phone and keep customers updated.</p>
+          </div>
+        </div>
+        <div id="dashboardSummary" class="summary-grid"></div>
+        <div id="todayJobs" class="card-stack"></div>
+      </section>
+
+      <section class="view" id="scheduleView" data-view="schedule">
+        <div class="section-heading">
+          <div>
+            <h2>Tomorrow Builder</h2>
+            <p>Plan the next day, set order, and prepare text messages.</p>
+          </div>
+          <div class="heading-actions">
+            <button class="secondary" id="autoAssignBtn">Auto Assign Time Windows</button>
+            <button id="generateMessagesBtn">Generate Night-Before Messages</button>
+          </div>
+        </div>
+
+        <form id="jobForm" class="panel form-grid">
+          <h3>Add Job</h3>
+          <label>
+            Customer
+            <select id="jobCustomer" required></select>
+          </label>
+          <label>
+            Service Type
+            <select id="jobServiceType" required></select>
+          </label>
+          <label id="jobRoundField" hidden>
+            Lawn Treatment Round
+            <select id="jobServiceRound">
+              <option value="1">Round 1</option>
+              <option value="2">Round 2</option>
+              <option value="3">Round 3</option>
+              <option value="4">Round 4</option>
+              <option value="5">Round 5</option>
+              <option value="6">Round 6</option>
+              <option value="7">Round 7</option>
+            </select>
+          </label>
+          <label>
+            Estimated Duration (minutes)
+            <input id="jobDuration" type="number" min="15" step="15" value="60" required>
+          </label>
+          <label>
+            Order
+            <input id="jobOrder" type="number" min="1" step="1" value="1" required>
+          </label>
+          <label>
+            Time Window Start
+            <input id="jobTimeStart" type="time" value="08:00">
+          </label>
+          <label>
+            Time Window End
+            <input id="jobTimeEnd" type="time" value="09:00">
+          </label>
+          <div class="form-actions">
+            <button type="submit">Add to Tomorrow</button>
+          </div>
+        </form>
+
+        <div class="section-split">
+          <section class="panel">
+            <div class="panel-header">
+              <h3>Tomorrow's Jobs</h3>
+              <button class="ghost" id="clearTomorrowBtn">Clear Tomorrow</button>
+            </div>
+            <div id="tomorrowJobs" class="card-stack compact"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h3>Night-Before Messages</h3>
+              <button class="ghost" id="copyAllMessagesBtn">Copy All</button>
+            </div>
+            <div id="messageList" class="message-list empty-state">
+              Generate messages after time windows are set.
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="customersView" data-view="customers">
+        <div class="section-heading">
+          <div>
+            <h2>Customers</h2>
+            <p>Maintain the address book and notes for repeat service.</p>
+          </div>
+        </div>
+
+        <form id="customerForm" class="panel form-grid">
+          <h3 id="customerFormTitle">Add Customer</h3>
+          <input id="customerId" type="hidden">
+          <label>
+            Name
+            <input id="customerName" type="text" required>
+          </label>
+          <label>
+            Phone
+            <input id="customerPhone" type="tel" required>
+          </label>
+          <label class="full-width">
+            Address
+            <input id="customerAddress" type="text" required>
+          </label>
+          <label class="full-width">
+            Notes
+            <textarea id="customerNotes" rows="3"></textarea>
+          </label>
+          <div class="form-actions">
+            <button type="submit">Save Customer</button>
+            <button type="button" class="secondary" id="cancelCustomerEditBtn">Cancel</button>
+          </div>
+        </form>
+
+        <div id="customerList" class="card-stack"></div>
+      </section>
+    </main>
+  </div>
+
+  <template id="jobCardTemplate">
+    <article class="job-card">
+      <div class="job-topline">
+        <div>
+          <p class="job-order"></p>
+          <h3 class="job-customer"></h3>
+        </div>
+        <span class="status-pill"></span>
+      </div>
+      <p class="job-service"></p>
+      <p class="job-address"></p>
+      <div class="job-meta"></div>
+      <div class="job-actions"></div>
+    </article>
+  </template>
+
+  <script src="app-config.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

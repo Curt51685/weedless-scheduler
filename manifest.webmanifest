@@ -1,0 +1,23 @@
+{
+  "name": "Weedless Scheduler",
+  "short_name": "Weedless",
+  "description": "Local-first scheduling PWA for Weedless Lawn Care & Irrigation.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4efe3",
+  "theme_color": "#295b2d",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
