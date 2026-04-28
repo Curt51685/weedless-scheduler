@@ -1,4 +1,4 @@
-const CACHE_NAME = "weedless-scheduler-cache-v5";
+const CACHE_NAME = "weedless-scheduler-cache-v6";
 const APP_ASSETS = [
   "./",
   "./index.html",

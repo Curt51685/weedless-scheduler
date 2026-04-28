@@ -40,6 +40,50 @@
           </div>
         </div>
         <div id="dashboardSummary" class="summary-grid"></div>
+        <form id="todayJobForm" class="panel form-grid">
+          <h3 id="todayJobFormTitle">Add Today Job</h3>
+          <input id="todayJobId" type="hidden">
+          <label>
+            Customer
+            <select id="todayJobCustomer" required></select>
+          </label>
+          <label>
+            Service Type
+            <select id="todayJobServiceType" required></select>
+          </label>
+          <label id="todayJobRoundField" hidden>
+            Lawn Treatment Round
+            <select id="todayJobServiceRound">
+              <option value="1">Round 1</option>
+              <option value="2">Round 2</option>
+              <option value="3">Round 3</option>
+              <option value="4">Round 4</option>
+              <option value="5">Round 5</option>
+              <option value="6">Round 6</option>
+              <option value="7">Round 7</option>
+            </select>
+          </label>
+          <label>
+            Estimated Duration (minutes)
+            <input id="todayJobDuration" type="number" min="15" step="15" value="60" required>
+          </label>
+          <label>
+            Order
+            <input id="todayJobOrder" type="number" min="1" step="1" value="1" required>
+          </label>
+          <label>
+            Time Window Start
+            <input id="todayJobTimeStart" type="time" value="08:00">
+          </label>
+          <label>
+            Time Window End
+            <input id="todayJobTimeEnd" type="time" value="09:00">
+          </label>
+          <div class="form-actions">
+            <button type="submit">Save Today Job</button>
+            <button type="button" class="secondary" id="cancelTodayJobEditBtn">Cancel</button>
+          </div>
+        </form>
         <div id="todayJobs" class="card-stack"></div>
       </section>
 

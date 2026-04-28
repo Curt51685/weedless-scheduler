@@ -60,6 +60,13 @@ const refs = {
   views: [...document.querySelectorAll(".view")],
   todayJobs: document.getElementById("todayJobs"),
   dashboardSummary: document.getElementById("dashboardSummary"),
+  todayJobForm: document.getElementById("todayJobForm"),
+  todayJobFormTitle: document.getElementById("todayJobFormTitle"),
+  todayJobId: document.getElementById("todayJobId"),
+  todayJobCustomer: document.getElementById("todayJobCustomer"),
+  todayJobServiceType: document.getElementById("todayJobServiceType"),
+  todayJobRoundField: document.getElementById("todayJobRoundField"),
+  todayJobServiceRound: document.getElementById("todayJobServiceRound"),
   tomorrowJobs: document.getElementById("tomorrowJobs"),
   messageList: document.getElementById("messageList"),
   customerList: document.getElementById("customerList"),
@@ -72,6 +79,7 @@ const refs = {
   customerFormTitle: document.getElementById("customerFormTitle"),
   customerId: document.getElementById("customerId"),
   cancelCustomerEditBtn: document.getElementById("cancelCustomerEditBtn"),
+  cancelTodayJobEditBtn: document.getElementById("cancelTodayJobEditBtn"),
 };
 
 init().catch((error) => {
@@ -240,9 +248,12 @@ function wireEvents() {
   });
 
   refs.jobForm.addEventListener("submit", handleAddJob);
+  refs.todayJobForm.addEventListener("submit", handleSaveTodayJob);
   refs.customerForm.addEventListener("submit", handleSaveCustomer);
   refs.cancelCustomerEditBtn.addEventListener("click", resetCustomerForm);
+  refs.cancelTodayJobEditBtn.addEventListener("click", resetTodayJobForm);
   refs.jobServiceType.addEventListener("change", syncRoundFieldVisibility);
+  refs.todayJobServiceType.addEventListener("change", syncTodayRoundFieldVisibility);
 
   document.getElementById("autoAssignBtn").addEventListener("click", autoAssignTomorrowWindows);
   document.getElementById("generateMessagesBtn").addEventListener("click", renderMessages);
@@ -254,12 +265,16 @@ function renderAll() {
   setActiveView(state.ui.activeView, false);
   renderCustomerOptions();
   syncRoundFieldVisibility();
+  syncTodayRoundFieldVisibility();
   renderSmsStatus();
   renderSyncStatus();
   renderTodayJobs();
   renderTomorrowJobs();
   renderCustomers();
   renderMessages();
+  if (!refs.todayJobId.value) {
+    resetTodayJobForm();
+  }
 }
 
 function setActiveView(viewName, persist = true) {
@@ -307,13 +322,16 @@ function renderSyncStatus() {
 
 function populateServiceOptions() {
   refs.jobServiceType.innerHTML = SERVICES.map((service) => `<option value="${service}">${service}</option>`).join("");
+  refs.todayJobServiceType.innerHTML = SERVICES.map((service) => `<option value="${service}">${service}</option>`).join("");
 }
 
 function renderCustomerOptions() {
   const customers = [...state.customers].sort((a, b) => a.name.localeCompare(b.name));
-  refs.jobCustomer.innerHTML = customers
+  const options = customers
     .map((customer) => `<option value="${customer.id}">${customer.name} - ${customer.address}</option>`)
     .join("");
+  refs.jobCustomer.innerHTML = options;
+  refs.todayJobCustomer.innerHTML = options;
 }
 
 function syncRoundFieldVisibility() {
@@ -324,6 +342,17 @@ function syncRoundFieldVisibility() {
   refs.jobServiceRound.disabled = !isLawnTreatment;
   if (!isLawnTreatment) {
     refs.jobServiceRound.value = "1";
+  }
+}
+
+function syncTodayRoundFieldVisibility() {
+  const isLawnTreatment = refs.todayJobServiceType.value === LAWN_TREATMENT_SERVICE;
+  refs.todayJobRoundField.hidden = !isLawnTreatment;
+  refs.todayJobRoundField.style.display = isLawnTreatment ? "" : "none";
+  refs.todayJobRoundField.setAttribute("aria-hidden", String(!isLawnTreatment));
+  refs.todayJobServiceRound.disabled = !isLawnTreatment;
+  if (!isLawnTreatment) {
+    refs.todayJobServiceRound.value = "1";
   }
 }
 
@@ -351,6 +380,16 @@ function renderTodayJobs() {
 
   todayJobs.forEach((job) => {
     const card = createJobCard(job, true, job.id === nextJob?.id);
+    const editGroup = document.createElement("div");
+    editGroup.className = "job-actions";
+    editGroup.innerHTML = `
+      <button class="secondary" data-action="edit-today">Edit</button>
+      <button class="secondary" data-action="move-up-today">Move Up</button>
+      <button class="secondary" data-action="move-down-today">Move Down</button>
+      <button class="warn" data-action="delete-today">Delete</button>
+    `;
+    editGroup.addEventListener("click", (event) => handleTodayAdjustAction(event, job.id));
+    card.append(editGroup);
     refs.todayJobs.append(card);
   });
 }
@@ -600,6 +639,50 @@ function handleAddJob(event) {
   showToast("Job added to tomorrow");
 }
 
+function handleSaveTodayJob(event) {
+  event.preventDefault();
+  const customer = state.customers.find((entry) => entry.id === refs.todayJobCustomer.value);
+  if (!customer) return;
+
+  const todayKey = getTodayKey();
+  const jobs = getJobsForDate(todayKey);
+  const existingId = refs.todayJobId.value;
+  const serviceType = refs.todayJobServiceType.value;
+  const serviceRound = serviceType === LAWN_TREATMENT_SERVICE ? Number(refs.todayJobServiceRound.value) : null;
+  const duration = Number(document.getElementById("todayJobDuration").value);
+  const order = Number(document.getElementById("todayJobOrder").value);
+  const start = document.getElementById("todayJobTimeStart").value || "08:00";
+  const end = document.getElementById("todayJobTimeEnd").value || addMinutes(start, duration);
+
+  if (existingId) {
+    const job = jobs.find((entry) => entry.id === existingId);
+    if (!job) return;
+    Object.assign(job, {
+      customerId: customer.id,
+      customerName: customer.name,
+      phone: customer.phone,
+      address: customer.address,
+      serviceType,
+      serviceRound: normalizeServiceRound(serviceType, serviceRound),
+      estimatedDuration: duration,
+      order,
+      timeWindowStart: start,
+      timeWindowEnd: end,
+      timeWindow: `${formatTime(start)}-${formatTime(end)}`,
+    });
+    showToast("Today's job updated");
+  } else {
+    jobs.push(buildJob(customer, serviceType, duration, order, start, end, todayKey, serviceRound));
+    showToast("Today's job added");
+  }
+
+  sortJobs(todayKey);
+  reindexJobs(todayKey);
+  saveState();
+  resetTodayJobForm();
+  renderTodayJobs();
+}
+
 function handleSaveCustomer(event) {
   event.preventDefault();
   const id = refs.customerId.value;
@@ -629,6 +712,41 @@ function handleSaveCustomer(event) {
   renderMessages();
 }
 
+function handleTodayAdjustAction(event, jobId) {
+  const action = event.target.dataset.action;
+  if (!action) return;
+
+  const todayKey = getTodayKey();
+  const jobs = getJobsForDate(todayKey);
+  const index = jobs.findIndex((job) => job.id === jobId);
+  if (index === -1) return;
+
+  if (action === "edit-today") {
+    startTodayJobEdit(jobId);
+    return;
+  }
+
+  if (action === "move-up-today" && index > 0) {
+    [jobs[index - 1], jobs[index]] = [jobs[index], jobs[index - 1]];
+  }
+
+  if (action === "move-down-today" && index < jobs.length - 1) {
+    [jobs[index + 1], jobs[index]] = [jobs[index], jobs[index + 1]];
+  }
+
+  if (action === "delete-today") {
+    jobs.splice(index, 1);
+  }
+
+  reindexJobs(todayKey);
+  saveState();
+  if (action === "delete-today") {
+    resetTodayJobForm();
+    showToast("Today's job deleted");
+  }
+  renderTodayJobs();
+}
+
 function startCustomerEdit(customerId) {
   const customer = state.customers.find((entry) => entry.id === customerId);
   if (!customer) return;
@@ -640,10 +758,39 @@ function startCustomerEdit(customerId) {
   document.getElementById("customerNotes").value = customer.notes || "";
 }
 
+function startTodayJobEdit(jobId) {
+  const job = getJobsForDate(getTodayKey()).find((entry) => entry.id === jobId);
+  if (!job) return;
+
+  refs.todayJobFormTitle.textContent = "Edit Today Job";
+  refs.todayJobId.value = job.id;
+  refs.todayJobCustomer.value = job.customerId;
+  refs.todayJobServiceType.value = job.serviceType;
+  refs.todayJobServiceRound.value = String(normalizeServiceRound(job.serviceType, job.serviceRound) || 1);
+  document.getElementById("todayJobDuration").value = job.estimatedDuration;
+  document.getElementById("todayJobOrder").value = job.order;
+  document.getElementById("todayJobTimeStart").value = job.timeWindowStart;
+  document.getElementById("todayJobTimeEnd").value = job.timeWindowEnd;
+  syncTodayRoundFieldVisibility();
+  refs.todayJobForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function resetCustomerForm() {
   refs.customerForm.reset();
   refs.customerId.value = "";
   refs.customerFormTitle.textContent = "Add Customer";
+}
+
+function resetTodayJobForm() {
+  refs.todayJobForm.reset();
+  refs.todayJobId.value = "";
+  refs.todayJobFormTitle.textContent = "Add Today Job";
+  document.getElementById("todayJobDuration").value = 60;
+  document.getElementById("todayJobOrder").value = getJobsForDate(getTodayKey()).length + 1;
+  document.getElementById("todayJobTimeStart").value = "08:00";
+  document.getElementById("todayJobTimeEnd").value = "09:00";
+  refs.todayJobServiceRound.value = "1";
+  syncTodayRoundFieldVisibility();
 }
 
 function deleteCustomer(customerId) {
