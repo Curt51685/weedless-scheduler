@@ -252,7 +252,7 @@ function wireEvents() {
   refs.todayJobForm.addEventListener("submit", handleSaveTodayJob);
   refs.customerForm.addEventListener("submit", handleSaveCustomer);
   refs.cancelCustomerEditBtn.addEventListener("click", resetCustomerForm);
-  refs.cancelTodayJobEditBtn.addEventListener("click", resetTodayJobForm);
+  refs.cancelTodayJobEditBtn.addEventListener("click", closeTodayJobForm);
   refs.openTodayJobFormBtn.addEventListener("click", openTodayJobFormForCreate);
   refs.jobServiceType.addEventListener("change", syncRoundFieldVisibility);
   refs.todayJobServiceType.addEventListener("change", syncTodayRoundFieldVisibility);
