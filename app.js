@@ -816,12 +816,14 @@ function resetTodayJobForm() {
 
 function openTodayJobForm() {
   refs.todayJobForm.hidden = false;
+  refs.todayJobForm.removeAttribute("hidden");
   refs.todayJobForm.style.display = "";
 }
 
 function closeTodayJobForm() {
   resetTodayJobForm();
   refs.todayJobForm.hidden = true;
+  refs.todayJobForm.setAttribute("hidden", "");
   refs.todayJobForm.style.display = "none";
 }
 
