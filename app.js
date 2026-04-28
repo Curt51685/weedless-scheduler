@@ -638,7 +638,7 @@ function handleAddJob(event) {
   const serviceRound = serviceType === LAWN_TREATMENT_SERVICE ? Number(refs.jobServiceRound.value) : null;
   const duration = Number(document.getElementById("jobDuration").value);
   const start = document.getElementById("jobTimeStart").value || "08:00";
-  const end = document.getElementById("jobTimeEnd").value || addMinutes(start, duration);
+  const end = addMinutes(start, 120);
   const tomorrowKey = getTomorrowKey();
   const jobs = getJobsForDate(tomorrowKey);
 
@@ -673,7 +673,7 @@ function handleSaveTodayJob(event) {
   const duration = Number(document.getElementById("todayJobDuration").value);
   const order = Number(document.getElementById("todayJobOrder").value);
   const start = document.getElementById("todayJobTimeStart").value || "08:00";
-  const end = document.getElementById("todayJobTimeEnd").value || addMinutes(start, duration);
+  const end = addMinutes(start, 120);
 
   if (existingId) {
     const job = jobs.find((entry) => entry.id === existingId);
