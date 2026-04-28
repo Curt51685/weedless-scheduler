@@ -1015,7 +1015,6 @@ async function refreshSmsStatus() {
     try {
       const response = await fetch(functionUrl, {
         method: "GET",
-        headers: buildTwilioHeaders(),
       });
       if (!response.ok) throw new Error("twilio function unavailable");
       const data = await response.json();
@@ -1050,7 +1049,6 @@ async function sendCustomerMessage(job, message, sentMessage, copiedMessage) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...buildTwilioHeaders(),
       },
       body: JSON.stringify({
         to: job.phone,
@@ -1076,15 +1074,6 @@ async function sendCustomerMessage(job, message, sentMessage, copiedMessage) {
 
 function getSmsEndpoint() {
   return WEEDLESS_CONFIG.twilio?.functionUrl || "/api/send-sms";
-}
-
-function buildTwilioHeaders() {
-  const anonKey = WEEDLESS_CONFIG.supabase?.anonKey;
-  if (!anonKey) return {};
-  return {
-    apikey: anonKey,
-    Authorization: `Bearer ${anonKey}`,
-  };
 }
 
 function showToast(message) {
