@@ -254,6 +254,10 @@ function wireEvents() {
   refs.cancelTodayJobEditBtn.addEventListener("click", resetTodayJobForm);
   refs.jobServiceType.addEventListener("change", syncRoundFieldVisibility);
   refs.todayJobServiceType.addEventListener("change", syncTodayRoundFieldVisibility);
+  document.getElementById("jobDuration").addEventListener("change", syncTomorrowEndTime);
+  document.getElementById("jobTimeStart").addEventListener("change", syncTomorrowEndTime);
+  document.getElementById("todayJobDuration").addEventListener("change", syncTodayEndTime);
+  document.getElementById("todayJobTimeStart").addEventListener("change", syncTodayEndTime);
 
   document.getElementById("autoAssignBtn").addEventListener("click", autoAssignTomorrowWindows);
   document.getElementById("generateMessagesBtn").addEventListener("click", renderMessages);
@@ -266,6 +270,8 @@ function renderAll() {
   renderCustomerOptions();
   syncRoundFieldVisibility();
   syncTodayRoundFieldVisibility();
+  syncTomorrowEndTime();
+  syncTodayEndTime();
   renderSmsStatus();
   renderSyncStatus();
   renderTodayJobs();
@@ -354,6 +360,18 @@ function syncTodayRoundFieldVisibility() {
   if (!isLawnTreatment) {
     refs.todayJobServiceRound.value = "1";
   }
+}
+
+function syncTomorrowEndTime() {
+  const start = document.getElementById("jobTimeStart").value || "08:00";
+  const duration = Number(document.getElementById("jobDuration").value || 60);
+  document.getElementById("jobTimeEnd").value = addMinutes(start, duration);
+}
+
+function syncTodayEndTime() {
+  const start = document.getElementById("todayJobTimeStart").value || "08:00";
+  const duration = Number(document.getElementById("todayJobDuration").value || 60);
+  document.getElementById("todayJobTimeEnd").value = addMinutes(start, duration);
 }
 
 function renderTodayJobs() {
