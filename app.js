@@ -256,10 +256,12 @@ function wireEvents() {
   refs.openTodayJobFormBtn.addEventListener("click", openTodayJobFormForCreate);
   refs.jobServiceType.addEventListener("change", syncRoundFieldVisibility);
   refs.todayJobServiceType.addEventListener("change", syncTodayRoundFieldVisibility);
-  document.getElementById("jobDuration").addEventListener("change", syncTomorrowEndTime);
-  document.getElementById("jobTimeStart").addEventListener("change", syncTomorrowEndTime);
-  document.getElementById("todayJobDuration").addEventListener("change", syncTodayEndTime);
-  document.getElementById("todayJobTimeStart").addEventListener("change", syncTodayEndTime);
+  ["change", "input"].forEach((eventName) => {
+    document.getElementById("jobDuration").addEventListener(eventName, syncTomorrowEndTime);
+    document.getElementById("jobTimeStart").addEventListener(eventName, syncTomorrowEndTime);
+    document.getElementById("todayJobDuration").addEventListener(eventName, syncTodayEndTime);
+    document.getElementById("todayJobTimeStart").addEventListener(eventName, syncTodayEndTime);
+  });
 
   document.getElementById("autoAssignBtn").addEventListener("click", autoAssignTomorrowWindows);
   document.getElementById("generateMessagesBtn").addEventListener("click", renderMessages);
@@ -654,6 +656,7 @@ function handleAddJob(event) {
   document.getElementById("jobTimeEnd").value = "09:00";
   refs.jobServiceRound.value = "1";
   syncRoundFieldVisibility();
+  syncTomorrowEndTime();
   renderTomorrowJobs();
   renderMessages();
   showToast("Job added to tomorrow");
@@ -793,6 +796,7 @@ function startTodayJobEdit(jobId) {
   document.getElementById("todayJobTimeStart").value = job.timeWindowStart;
   document.getElementById("todayJobTimeEnd").value = job.timeWindowEnd;
   syncTodayRoundFieldVisibility();
+  syncTodayEndTime();
   refs.todayJobForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -812,6 +816,7 @@ function resetTodayJobForm() {
   document.getElementById("todayJobTimeEnd").value = "09:00";
   refs.todayJobServiceRound.value = "1";
   syncTodayRoundFieldVisibility();
+  syncTodayEndTime();
 }
 
 function openTodayJobForm() {
