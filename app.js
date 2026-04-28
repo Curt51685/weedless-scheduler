@@ -568,7 +568,7 @@ async function handleTodayAction(event, jobId) {
     job.status = "On My Way";
     job.onMyWayTime = new Date().toISOString();
     const eta = job.timeWindow.split("-")[0];
-    const message = `Hey ${job.customerName}, this is Weedless Lawn Care & Irrigation. I'm headed your way now and should be there around ${eta}.`;
+    const message = `Hey ${getFirstName(job.customerName)}, this is Weedless Lawn Care & Irrigation. I'm headed your way now and should be there around ${eta}.`;
     await sendCustomerMessage(job, message, "On My Way text sent", "On My Way message copied");
   }
 
@@ -589,7 +589,7 @@ async function handleTodayAction(event, jobId) {
     job.timeWindowStart = updatedWindow.start;
     job.timeWindowEnd = updatedWindow.end;
     job.timeWindow = `${formatTime(updatedWindow.start)}-${formatTime(updatedWindow.end)}`;
-    const message = `Hey ${job.customerName}, I'm running a little behind today. My updated arrival window is ${job.timeWindow}. Thanks for your patience.`;
+    const message = `Hey ${getFirstName(job.customerName)}, I'm running a little behind today. My updated arrival window is ${job.timeWindow}. Thanks for your patience.`;
     await sendCustomerMessage(job, message, "Running late text sent", "Running late message copied");
   }
 
@@ -914,7 +914,7 @@ function copyAllMessages() {
 }
 
 function buildNightBeforeMessage(job) {
-  return `Hey ${job.customerName}, this is Weedless Lawn Care & Irrigation. I've got you scheduled for tomorrow with an arrival window of ${job.timeWindow} for ${formatServiceLabel(job)}. Let me know if that works. Thanks!`;
+  return `Hey ${getFirstName(job.customerName)}, this is Weedless Lawn Care & Irrigation. I've got you scheduled for tomorrow with an arrival window of ${job.timeWindow} for ${formatServiceLabel(job)}. Let me know if that works. Thanks!`;
 }
 
 function syncCustomerReferences(customer) {
@@ -1153,6 +1153,10 @@ function normalizeServiceRound(serviceType, serviceRound) {
 function formatServiceLabel(job) {
   if (job.serviceType !== LAWN_TREATMENT_SERVICE) return job.serviceType;
   return `${job.serviceType}: Round ${normalizeServiceRound(job.serviceType, job.serviceRound)}`;
+}
+
+function getFirstName(fullName) {
+  return String(fullName || "").trim().split(/\s+/)[0] || "";
 }
 
 function sanitizeStateForSave(sourceState) {
