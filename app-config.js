@@ -4,4 +4,7 @@ window.WEEDLESS_CONFIG = {
     anonKey: "sb_publishable_oE4M_xJxOeIMhJV762QGbg_EATotVk2",
     stateRowId: "weedless-main",
   },
+  twilio: {
+    functionUrl: "https://liagettxqpmjonrrqktx.functions.supabase.co/send-sms",
+  },
 };

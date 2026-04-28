@@ -37,6 +37,8 @@ The current Supabase setup is designed for a fast MVP and shared no-login access
 
 ## Twilio SMS setup
 
+### Local server option
+
 Copy `.env.example` to `.env` and fill in:
 
 ```text
@@ -50,8 +52,26 @@ If those values are present, the app sends SMS automatically through Twilio.
 
 If they are missing, the app falls back to copy-to-clipboard mode.
 
+### Supabase Edge Function option
+
+For the public GitHub Pages app, use the Supabase Edge Function in `supabase/functions/send-sms/index.ts`.
+
+Store these Supabase function secrets:
+
+```text
+TWILIO_ACCOUNT_SID=...
+TWILIO_AUTH_TOKEN=...
+TWILIO_FROM_NUMBER=+1...
+```
+
+Then deploy the function as `send-sms` with JWT verification disabled for this no-login MVP.
+
+The frontend is already configured to call:
+
+`https://liagettxqpmjonrrqktx.functions.supabase.co/send-sms`
+
 ## Notes
 
 - Browser `localStorage` is still used as an offline/local cache
 - Shared real-time sync uses one Supabase row containing the app state JSON
-- SMS sending happens through the local Node server so Twilio secrets do not sit in browser code
+- SMS sending can happen through the local Node server or the hosted Supabase Edge Function so Twilio secrets do not sit in browser code

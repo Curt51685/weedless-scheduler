@@ -4,4 +4,7 @@ window.WEEDLESS_CONFIG = {
     anonKey: "your-public-anon-key",
     stateRowId: "weedless-main",
   },
+  twilio: {
+    functionUrl: "https://your-project-ref.functions.supabase.co/send-sms",
+  },
 };

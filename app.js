@@ -1009,6 +1009,24 @@ async function copyText(text, successMessage) {
 }
 
 async function refreshSmsStatus() {
+  const functionUrl = WEEDLESS_CONFIG.twilio?.functionUrl;
+
+  if (functionUrl) {
+    try {
+      const response = await fetch(functionUrl, {
+        method: "GET",
+        headers: buildTwilioHeaders(),
+      });
+      if (!response.ok) throw new Error("twilio function unavailable");
+      const data = await response.json();
+      smsState.enabled = Boolean(data.smsEnabled);
+      renderSmsStatus();
+      return;
+    } catch {
+      smsState.enabled = false;
+    }
+  }
+
   try {
     const response = await fetch("/api/status", { cache: "no-store" });
     if (!response.ok) throw new Error("status unavailable");
@@ -1021,16 +1039,18 @@ async function refreshSmsStatus() {
 }
 
 async function sendCustomerMessage(job, message, sentMessage, copiedMessage) {
+  const smsEndpoint = getSmsEndpoint();
   if (!smsState.enabled) {
     await copyText(message, copiedMessage);
     return false;
   }
 
   try {
-    const response = await fetch("/api/send-sms", {
+    const response = await fetch(smsEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...buildTwilioHeaders(),
       },
       body: JSON.stringify({
         to: job.phone,
@@ -1052,6 +1072,19 @@ async function sendCustomerMessage(job, message, sentMessage, copiedMessage) {
     await copyText(message, `${copiedMessage} (Twilio unavailable)`);
     return false;
   }
+}
+
+function getSmsEndpoint() {
+  return WEEDLESS_CONFIG.twilio?.functionUrl || "/api/send-sms";
+}
+
+function buildTwilioHeaders() {
+  const anonKey = WEEDLESS_CONFIG.supabase?.anonKey;
+  if (!anonKey) return {};
+  return {
+    apikey: anonKey,
+    Authorization: `Bearer ${anonKey}`,
+  };
 }
 
 function showToast(message) {
