@@ -368,14 +368,12 @@ function syncTodayRoundFieldVisibility() {
 
 function syncTomorrowEndTime() {
   const start = document.getElementById("jobTimeStart").value || "08:00";
-  const duration = Number(document.getElementById("jobDuration").value || 60);
-  document.getElementById("jobTimeEnd").value = addMinutes(start, duration);
+  document.getElementById("jobTimeEnd").value = addMinutes(start, 120);
 }
 
 function syncTodayEndTime() {
   const start = document.getElementById("todayJobTimeStart").value || "08:00";
-  const duration = Number(document.getElementById("todayJobDuration").value || 60);
-  document.getElementById("todayJobTimeEnd").value = addMinutes(start, duration);
+  document.getElementById("todayJobTimeEnd").value = addMinutes(start, 120);
 }
 
 function renderTodayJobs() {
@@ -491,7 +489,7 @@ function renderMessages() {
     const card = document.createElement("article");
     card.className = "message-card";
     card.innerHTML = `
-      <h4>${escapeHtml(job.customerName)}</h4>
+      <h4>${escapeHtml(getFirstName(job.customerName))}</h4>
       <div class="message-body"><pre>${escapeHtml(message)}</pre></div>
       <div class="message-actions">
         <button class="secondary" data-action="send">Send Text</button>
@@ -825,7 +823,11 @@ function openTodayJobForm() {
   refs.todayJobForm.style.display = "";
 }
 
-function closeTodayJobForm() {
+function closeTodayJobForm(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
   resetTodayJobForm();
   refs.todayJobForm.hidden = true;
   refs.todayJobForm.setAttribute("hidden", "");
