@@ -5,6 +5,6 @@ window.WEEDLESS_CONFIG = {
     stateRowId: "weedless-main",
   },
   twilio: {
-    functionUrl: "https://liagettxqpmjonrrqktx.functions.supabase.co/send-sms",
+    functionUrl: "https://liagettxqpmjonrrqktx.supabase.co/functions/v1/dynamic-worker",
   },
 };

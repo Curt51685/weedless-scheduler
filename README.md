@@ -68,7 +68,7 @@ Then deploy the function as `send-sms` with JWT verification disabled for this n
 
 The frontend is already configured to call:
 
-`https://liagettxqpmjonrrqktx.functions.supabase.co/send-sms`
+`https://liagettxqpmjonrrqktx.supabase.co/functions/v1/dynamic-worker`
 
 ## Notes
 
