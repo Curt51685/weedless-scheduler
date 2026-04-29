@@ -294,8 +294,31 @@
           <h3 id="inspectionFormTitle">New Inspection</h3>
           <input id="inspectionId" type="hidden">
           <label>
+            Customer Source
+            <select id="inspectionCustomerMode">
+              <option value="existing">Use Existing Customer</option>
+              <option value="new">Add New Customer</option>
+            </select>
+          </label>
+          <label>
             Customer
             <select id="inspectionCustomer" required></select>
+          </label>
+          <label id="inspectionNewCustomerNameField" hidden>
+            New Customer Name
+            <input id="inspectionNewCustomerName" type="text" placeholder="Customer name">
+          </label>
+          <label id="inspectionNewCustomerPhoneField" hidden>
+            New Customer Phone
+            <input id="inspectionNewCustomerPhone" type="tel" placeholder="918-555-1234">
+          </label>
+          <label id="inspectionNewCustomerAddressField" class="full-width" hidden>
+            New Customer Address
+            <input id="inspectionNewCustomerAddress" type="text" placeholder="123 Main St">
+          </label>
+          <label id="inspectionNewCustomerNotesField" class="full-width" hidden>
+            New Customer Notes
+            <textarea id="inspectionNewCustomerNotes" rows="2" placeholder="Gate code, dog, preferred time, etc."></textarea>
           </label>
           <label>
             Related Job

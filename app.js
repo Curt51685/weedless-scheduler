@@ -86,6 +86,7 @@ const refs = {
   inspectionForm: document.getElementById("inspectionForm"),
   inspectionFormTitle: document.getElementById("inspectionFormTitle"),
   inspectionId: document.getElementById("inspectionId"),
+  inspectionCustomerMode: document.getElementById("inspectionCustomerMode"),
   inspectionCustomer: document.getElementById("inspectionCustomer"),
   inspectionJob: document.getElementById("inspectionJob"),
   inspectionList: document.getElementById("inspectionList"),
@@ -286,6 +287,7 @@ function wireEvents() {
   refs.todayJobServiceType.addEventListener("change", syncTodayRoundFieldVisibility);
   refs.planningDate.addEventListener("change", handlePlanningDateChange);
   refs.inspectionJob.addEventListener("change", handleInspectionJobSelection);
+  refs.inspectionCustomerMode.addEventListener("change", syncInspectionCustomerMode);
   ["change", "input"].forEach((eventName) => {
     document.getElementById("jobDuration").addEventListener(eventName, syncTomorrowEndTime);
     document.getElementById("jobTimeStart").addEventListener(eventName, syncTomorrowEndTime);
@@ -304,6 +306,7 @@ function renderAll() {
   refs.planningDate.value = getPlanningDateKey();
   renderCustomerOptions();
   renderInspectionOptions();
+  syncInspectionCustomerMode();
   syncRoundFieldVisibility();
   syncTodayRoundFieldVisibility();
   syncTomorrowEndTime();
@@ -390,6 +393,22 @@ function renderInspectionOptions() {
     '<option value="">No linked job</option>',
     ...irrigationJobs.map((job) => `<option value="${job.id}">${job.date} | ${job.customerName} | ${formatServiceLabel(job)}</option>`),
   ].join("");
+}
+
+function syncInspectionCustomerMode() {
+  const isNewCustomer = refs.inspectionCustomerMode.value === "new";
+  refs.inspectionCustomer.disabled = isNewCustomer;
+
+  [
+    "inspectionNewCustomerNameField",
+    "inspectionNewCustomerPhoneField",
+    "inspectionNewCustomerAddressField",
+    "inspectionNewCustomerNotesField",
+  ].forEach((id) => {
+    const field = document.getElementById(id);
+    field.hidden = !isNewCustomer;
+    field.style.display = isNewCustomer ? "" : "none";
+  });
 }
 
 function syncRoundFieldVisibility() {
@@ -946,7 +965,7 @@ function resetCustomerForm() {
 
 function handleSaveInspection(event) {
   event.preventDefault();
-  const customer = state.customers.find((entry) => entry.id === refs.inspectionCustomer.value);
+  const customer = getInspectionCustomerFromForm();
   if (!customer) return;
 
   const linkedJob = refs.inspectionJob.value ? findJobById(refs.inspectionJob.value) : null;
@@ -989,6 +1008,8 @@ function handleSaveInspection(event) {
   }
 
   saveState();
+  renderCustomerOptions();
+  renderInspectionOptions();
   renderInspections();
   resetInspectionForm();
 }
@@ -1013,10 +1034,16 @@ function resetInspectionForm() {
   refs.inspectionForm.reset();
   refs.inspectionId.value = "";
   refs.inspectionFormTitle.textContent = "New Inspection";
+  refs.inspectionCustomerMode.value = "existing";
   document.getElementById("inspectionDate").value = formatDateKey(new Date());
   document.getElementById("inspectionDraftDate").value = getPlanningDateKey();
   document.getElementById("inspectionZoneCount").value = 0;
   document.getElementById("inspectionBrokenHeads").value = 0;
+  document.getElementById("inspectionNewCustomerName").value = "";
+  document.getElementById("inspectionNewCustomerPhone").value = "";
+  document.getElementById("inspectionNewCustomerAddress").value = "";
+  document.getElementById("inspectionNewCustomerNotes").value = "";
+  syncInspectionCustomerMode();
 }
 
 function openTodayJobForm() {
@@ -1045,9 +1072,11 @@ function openTodayJobFormForCreate() {
 function openInspectionFormForJob(job) {
   setActiveView("inspections");
   resetInspectionForm();
+  refs.inspectionCustomerMode.value = "existing";
   refs.inspectionCustomer.value = job.customerId;
   refs.inspectionJob.value = job.id;
   refs.inspectionFormTitle.textContent = `New Inspection for ${job.customerName}`;
+  syncInspectionCustomerMode();
   refs.inspectionForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -1057,6 +1086,7 @@ function startInspectionEdit(inspectionId) {
   setActiveView("inspections");
   refs.inspectionFormTitle.textContent = "Edit Inspection";
   refs.inspectionId.value = inspection.id;
+  refs.inspectionCustomerMode.value = state.customers.some((entry) => entry.id === inspection.customerId) ? "existing" : "new";
   refs.inspectionCustomer.value = inspection.customerId;
   refs.inspectionJob.value = inspection.jobId || "";
   document.getElementById("inspectionDate").value = inspection.inspectionDate || formatDateKey(new Date());
@@ -1074,6 +1104,11 @@ function startInspectionEdit(inspectionId) {
   document.getElementById("inspectionRepairsNeeded").value = inspection.repairsNeeded || "";
   document.getElementById("inspectionMaterialsNeeded").value = inspection.materialsNeeded || "";
   document.getElementById("inspectionNotes").value = inspection.notes || "";
+  document.getElementById("inspectionNewCustomerName").value = inspection.customerName || "";
+  document.getElementById("inspectionNewCustomerPhone").value = "";
+  document.getElementById("inspectionNewCustomerAddress").value = "";
+  document.getElementById("inspectionNewCustomerNotes").value = "";
+  syncInspectionCustomerMode();
   refs.inspectionForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -1135,7 +1170,9 @@ function createDraftJobFromInspection(inspectionId) {
 function handleInspectionJobSelection() {
   const linkedJob = refs.inspectionJob.value ? findJobById(refs.inspectionJob.value) : null;
   if (!linkedJob) return;
+  refs.inspectionCustomerMode.value = "existing";
   refs.inspectionCustomer.value = linkedJob.customerId;
+  syncInspectionCustomerMode();
 }
 
 function handlePlanningDateChange() {
@@ -1144,6 +1181,48 @@ function handlePlanningDateChange() {
   renderTomorrowJobs();
   renderMessages();
   document.getElementById("jobOrder").value = getJobsForDate(getPlanningDateKey()).length + 1;
+}
+
+function getInspectionCustomerFromForm() {
+  if (refs.inspectionCustomerMode.value === "existing") {
+    return state.customers.find((entry) => entry.id === refs.inspectionCustomer.value) || null;
+  }
+
+  const name = document.getElementById("inspectionNewCustomerName").value.trim();
+  const phone = document.getElementById("inspectionNewCustomerPhone").value.trim();
+  const address = document.getElementById("inspectionNewCustomerAddress").value.trim();
+  const notes = document.getElementById("inspectionNewCustomerNotes").value.trim();
+
+  if (!name || !phone || !address) {
+    showToast("New customer name, phone, and address are required");
+    return null;
+  }
+
+  const existingCustomer = state.customers.find((entry) =>
+    entry.name.trim().toLowerCase() === name.toLowerCase() &&
+    entry.address.trim().toLowerCase() === address.toLowerCase(),
+  );
+
+  if (existingCustomer) {
+    refs.inspectionCustomerMode.value = "existing";
+    refs.inspectionCustomer.value = existingCustomer.id;
+    syncInspectionCustomerMode();
+    return existingCustomer;
+  }
+
+  const customer = {
+    id: crypto.randomUUID(),
+    name,
+    phone,
+    address,
+    notes,
+  };
+  state.customers.push(customer);
+  refs.inspectionCustomerMode.value = "existing";
+  refs.inspectionCustomer.value = customer.id;
+  syncInspectionCustomerMode();
+  showToast("New customer added from inspection");
+  return customer;
 }
 
 function autoAssignTomorrowWindows() {
