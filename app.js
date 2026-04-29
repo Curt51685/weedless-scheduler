@@ -63,6 +63,7 @@ const refs = {
   todayJobForm: document.getElementById("todayJobForm"),
   todayJobFormTitle: document.getElementById("todayJobFormTitle"),
   openTodayJobFormBtn: document.getElementById("openTodayJobFormBtn"),
+  exportCompletedBtn: document.getElementById("exportCompletedBtn"),
   todayJobId: document.getElementById("todayJobId"),
   todayJobCustomer: document.getElementById("todayJobCustomer"),
   todayJobServiceType: document.getElementById("todayJobServiceType"),
@@ -221,7 +222,17 @@ function seedTodayJobs(customers, dateKey) {
   ];
 }
 
-function buildJob(customer, serviceType, estimatedDuration, order, windowStart, windowEnd, dateKey, serviceRound = null) {
+function buildJob(
+  customer,
+  serviceType,
+  estimatedDuration,
+  order,
+  windowStart,
+  windowEnd,
+  dateKey,
+  serviceRound = null,
+  extras = {},
+) {
   return {
     id: crypto.randomUUID(),
     customerId: customer.id,
@@ -240,6 +251,10 @@ function buildJob(customer, serviceType, estimatedDuration, order, windowStart, 
     onMyWayTime: null,
     startTime: null,
     completedTime: null,
+    projectId: extras.projectId || crypto.randomUUID(),
+    projectName: extras.projectName || "",
+    assignedTo: extras.assignedTo || "",
+    notes: extras.notes || "",
   };
 }
 
@@ -254,6 +269,7 @@ function wireEvents() {
   refs.cancelCustomerEditBtn.addEventListener("click", resetCustomerForm);
   refs.cancelTodayJobEditBtn.addEventListener("click", closeTodayJobForm);
   refs.openTodayJobFormBtn.addEventListener("click", openTodayJobFormForCreate);
+  refs.exportCompletedBtn.addEventListener("click", exportCompletedJobs);
   refs.jobServiceType.addEventListener("change", syncRoundFieldVisibility);
   refs.todayJobServiceType.addEventListener("change", syncTodayRoundFieldVisibility);
   ["change", "input"].forEach((eventName) => {
@@ -406,6 +422,7 @@ function renderTodayJobs() {
       <button class="secondary" data-action="edit-today">Edit</button>
       <button class="secondary" data-action="move-up-today">Move Up</button>
       <button class="secondary" data-action="move-down-today">Move Down</button>
+      <button class="ghost" data-action="continue-tomorrow">Continue Tomorrow</button>
       <button class="warn" data-action="delete-today">Delete</button>
     `;
     editGroup.addEventListener("click", (event) => handleTodayAdjustAction(event, job.id));
@@ -430,6 +447,7 @@ function renderTomorrowJobs() {
     editGroup.innerHTML = `
       <button class="secondary" data-action="move-up">Move Up</button>
       <button class="secondary" data-action="move-down">Move Down</button>
+      <button class="ghost" data-action="continue-tomorrow">Continue Tomorrow</button>
       <button class="ghost" data-action="copy-night-message">Copy Message</button>
       <button class="warn" data-action="delete-job">Delete</button>
     `;
@@ -510,6 +528,13 @@ function createJobCard(job, includeFieldActions, isNextJob) {
   card.querySelector(".job-customer").textContent = job.customerName;
   card.querySelector(".job-service").textContent = formatServiceLabel(job);
   card.querySelector(".job-address").textContent = job.address;
+  const detailLine = buildJobDetailLine(job);
+  if (detailLine) {
+    const detail = document.createElement("p");
+    detail.className = "job-detail";
+    detail.textContent = detailLine;
+    card.querySelector(".job-address").insertAdjacentElement("afterend", detail);
+  }
 
   const statusPill = card.querySelector(".status-pill");
   statusPill.textContent = job.status;
@@ -620,6 +645,11 @@ function handleTomorrowJobAction(event, jobId) {
     void copyText(buildNightBeforeMessage(jobs[index]), "Night-before message copied");
   }
 
+  if (action === "continue-tomorrow") {
+    continueJobToTomorrow(jobs[index]);
+    return;
+  }
+
   jobs.forEach((job, order) => {
     job.order = order + 1;
   });
@@ -639,10 +669,17 @@ function handleAddJob(event) {
   const duration = Number(document.getElementById("jobDuration").value);
   const start = document.getElementById("jobTimeStart").value || "08:00";
   const end = addMinutes(start, 120);
+  const projectName = document.getElementById("jobProjectName").value.trim();
+  const assignedTo = document.getElementById("jobAssignedTo").value.trim();
+  const notes = document.getElementById("jobNotes").value.trim();
   const tomorrowKey = getTomorrowKey();
   const jobs = getJobsForDate(tomorrowKey);
 
-  const job = buildJob(customer, serviceType, duration, order, start, end, tomorrowKey, serviceRound);
+  const job = buildJob(customer, serviceType, duration, order, start, end, tomorrowKey, serviceRound, {
+    projectName,
+    assignedTo,
+    notes,
+  });
   jobs.push(job);
   sortJobs(tomorrowKey);
   reindexJobs(tomorrowKey);
@@ -674,6 +711,9 @@ function handleSaveTodayJob(event) {
   const order = Number(document.getElementById("todayJobOrder").value);
   const start = document.getElementById("todayJobTimeStart").value || "08:00";
   const end = addMinutes(start, 120);
+  const projectName = document.getElementById("todayJobProjectName").value.trim();
+  const assignedTo = document.getElementById("todayJobAssignedTo").value.trim();
+  const notes = document.getElementById("todayJobNotes").value.trim();
 
   if (existingId) {
     const job = jobs.find((entry) => entry.id === existingId);
@@ -690,10 +730,17 @@ function handleSaveTodayJob(event) {
       timeWindowStart: start,
       timeWindowEnd: end,
       timeWindow: `${formatTime(start)}-${formatTime(end)}`,
+      projectName,
+      assignedTo,
+      notes,
     });
     showToast("Today's job updated");
   } else {
-    jobs.push(buildJob(customer, serviceType, duration, order, start, end, todayKey, serviceRound));
+    jobs.push(buildJob(customer, serviceType, duration, order, start, end, todayKey, serviceRound, {
+      projectName,
+      assignedTo,
+      notes,
+    }));
     showToast("Today's job added");
   }
 
@@ -759,6 +806,11 @@ function handleTodayAdjustAction(event, jobId) {
     jobs.splice(index, 1);
   }
 
+  if (action === "continue-tomorrow") {
+    continueJobToTomorrow(jobs[index]);
+    return;
+  }
+
   reindexJobs(todayKey);
   saveState();
   if (action === "delete-today") {
@@ -789,10 +841,13 @@ function startTodayJobEdit(jobId) {
   refs.todayJobCustomer.value = job.customerId;
   refs.todayJobServiceType.value = job.serviceType;
   refs.todayJobServiceRound.value = String(normalizeServiceRound(job.serviceType, job.serviceRound) || 1);
+  document.getElementById("todayJobProjectName").value = job.projectName || "";
+  document.getElementById("todayJobAssignedTo").value = job.assignedTo || "";
   document.getElementById("todayJobDuration").value = job.estimatedDuration;
   document.getElementById("todayJobOrder").value = job.order;
   document.getElementById("todayJobTimeStart").value = job.timeWindowStart;
   document.getElementById("todayJobTimeEnd").value = job.timeWindowEnd;
+  document.getElementById("todayJobNotes").value = job.notes || "";
   syncTodayRoundFieldVisibility();
   syncTodayEndTime();
   refs.todayJobForm.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -808,10 +863,13 @@ function resetTodayJobForm() {
   refs.todayJobForm.reset();
   refs.todayJobId.value = "";
   refs.todayJobFormTitle.textContent = "Add Job Today";
+  document.getElementById("todayJobProjectName").value = "";
+  document.getElementById("todayJobAssignedTo").value = "";
   document.getElementById("todayJobDuration").value = 60;
   document.getElementById("todayJobOrder").value = getJobsForDate(getTodayKey()).length + 1;
   document.getElementById("todayJobTimeStart").value = "08:00";
   document.getElementById("todayJobTimeEnd").value = "09:00";
+  document.getElementById("todayJobNotes").value = "";
   refs.todayJobServiceRound.value = "1";
   syncTodayRoundFieldVisibility();
   syncTodayEndTime();
@@ -887,6 +945,54 @@ function syncDashboardFromToday() {
   saveState();
 }
 
+function continueJobToTomorrow(job) {
+  const tomorrowKey = getTomorrowKey();
+  const tomorrowJobs = getJobsForDate(tomorrowKey);
+  const duplicate = tomorrowJobs.find((entry) =>
+    entry.projectId === job.projectId &&
+    entry.customerId === job.customerId &&
+    entry.serviceType === job.serviceType &&
+    entry.timeWindowStart === job.timeWindowStart,
+  );
+
+  if (duplicate) {
+    showToast("That continued job is already on tomorrow");
+    return;
+  }
+
+  const customer = state.customers.find((entry) => entry.id === job.customerId) || {
+    id: job.customerId,
+    name: job.customerName,
+    phone: job.phone,
+    address: job.address,
+  };
+
+  const continuedJob = buildJob(
+    customer,
+    job.serviceType,
+    job.estimatedDuration,
+    tomorrowJobs.length + 1,
+    job.timeWindowStart,
+    job.timeWindowEnd,
+    tomorrowKey,
+    job.serviceRound,
+    {
+      projectId: job.projectId,
+      projectName: job.projectName,
+      assignedTo: job.assignedTo,
+      notes: job.notes,
+    },
+  );
+
+  tomorrowJobs.push(continuedJob);
+  sortJobs(tomorrowKey);
+  reindexJobs(tomorrowKey);
+  saveState();
+  renderTomorrowJobs();
+  renderMessages();
+  showToast("Job continued into tomorrow");
+}
+
 function getJobsForDate(dateKey) {
   if (!state.schedules[dateKey]) state.schedules[dateKey] = [];
   return state.schedules[dateKey];
@@ -917,6 +1023,14 @@ function copyAllMessages() {
 
 function buildNightBeforeMessage(job) {
   return `Hey ${getFirstName(job.customerName)}, this is Weedless Lawn Care & Irrigation. I've got you scheduled for tomorrow with an arrival window of ${job.timeWindow} for ${formatServiceLabel(job)}. Thanks!`;
+}
+
+function buildJobDetailLine(job) {
+  const details = [];
+  if (job.projectName) details.push(`Project: ${job.projectName}`);
+  if (job.assignedTo) details.push(`Crew: ${job.assignedTo}`);
+  if (job.notes) details.push(`Notes: ${job.notes}`);
+  return details.join(" • ");
 }
 
 function syncCustomerReferences(customer) {
@@ -1155,6 +1269,10 @@ function migrateState(savedState) {
         job.serviceType = LAWN_TREATMENT_SERVICE;
       }
       job.serviceRound = normalizeServiceRound(job.serviceType, job.serviceRound);
+      job.projectId = job.projectId || crypto.randomUUID();
+      job.projectName = job.projectName || "";
+      job.assignedTo = job.assignedTo || "";
+      job.notes = job.notes || "";
     });
   });
 
@@ -1185,6 +1303,90 @@ function getFirstName(fullName) {
 
 function sanitizeStateForSave(sourceState) {
   return migrateState(deepClone(sourceState));
+}
+
+function exportCompletedJobs() {
+  const completedJobs = Object.values(state.schedules)
+    .flat()
+    .filter((job) => job.status === "Completed");
+
+  if (!completedJobs.length) {
+    showToast("No completed jobs to export");
+    return;
+  }
+
+  const rows = [
+    [
+      "Date",
+      "Customer",
+      "Service",
+      "Project Name",
+      "Assigned Crew",
+      "Status",
+      "Start Time",
+      "Completed Time",
+      "Minutes Spent",
+      "Hours Spent",
+      "Address",
+      "Notes",
+    ],
+    ...completedJobs.map((job) => {
+      const minutesSpent = calculateTimeSpentMinutes(job);
+      return [
+        job.date,
+        job.customerName,
+        formatServiceLabel(job),
+        job.projectName || "",
+        job.assignedTo || "",
+        job.status,
+        formatTimestamp(job.startTime),
+        formatTimestamp(job.completedTime),
+        minutesSpent === "" ? "" : String(minutesSpent),
+        minutesSpent === "" ? "" : (minutesSpent / 60).toFixed(2),
+        job.address,
+        job.notes || "",
+      ];
+    }),
+  ];
+
+  const csv = rows.map((row) => row.map(csvCell).join(",")).join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `weedless-completed-jobs-${getTodayKey()}.csv`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  showToast("Completed jobs exported");
+}
+
+function calculateTimeSpentMinutes(job) {
+  if (!job.startTime || !job.completedTime) return "";
+  const start = new Date(job.startTime);
+  const end = new Date(job.completedTime);
+  const diffMs = end - start;
+  if (!Number.isFinite(diffMs) || diffMs <= 0) return "";
+  return Math.round(diffMs / 60000);
+}
+
+function formatTimestamp(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString([], {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function csvCell(value) {
+  const text = String(value ?? "");
+  return `"${text.replaceAll("\"", "\"\"")}"`;
 }
 
 function serializeState(value) {

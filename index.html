@@ -40,6 +40,7 @@
           </div>
           <div class="heading-actions">
             <button type="button" id="openTodayJobFormBtn">Add Job Today</button>
+            <button type="button" class="secondary" id="exportCompletedBtn">Export Completed CSV</button>
           </div>
         </div>
         <div id="dashboardSummary" class="summary-grid"></div>
@@ -51,8 +52,16 @@
             <select id="todayJobCustomer" required></select>
           </label>
           <label>
+            Project / Job Name
+            <input id="todayJobProjectName" type="text" placeholder="Front yard install, Main line repair, etc.">
+          </label>
+          <label>
             Service Type
             <select id="todayJobServiceType" required></select>
+          </label>
+          <label>
+            Assigned Crew
+            <input id="todayJobAssignedTo" type="text" placeholder="Owner, Irrigation Crew A, Subcontractor">
           </label>
           <label id="todayJobRoundField" hidden>
             Lawn Treatment Round
@@ -107,6 +116,10 @@
             Time Window End
             <input id="todayJobTimeEnd" type="time" value="09:00" readonly>
           </label>
+          <label class="full-width">
+            Job Notes
+            <textarea id="todayJobNotes" rows="3" placeholder="Materials, scope, crew notes, or progress updates"></textarea>
+          </label>
           <div class="form-actions">
             <button type="submit">Save Job Today</button>
             <button type="button" class="secondary" id="cancelTodayJobEditBtn">Cancel</button>
@@ -134,8 +147,16 @@
             <select id="jobCustomer" required></select>
           </label>
           <label>
+            Project / Job Name
+            <input id="jobProjectName" type="text" placeholder="Front yard install, Main line repair, etc.">
+          </label>
+          <label>
             Service Type
             <select id="jobServiceType" required></select>
+          </label>
+          <label>
+            Assigned Crew
+            <input id="jobAssignedTo" type="text" placeholder="Owner, Irrigation Crew A, Subcontractor">
           </label>
           <label id="jobRoundField" hidden>
             Lawn Treatment Round
@@ -189,6 +210,10 @@
           <label>
             Time Window End
             <input id="jobTimeEnd" type="time" value="09:00" readonly>
+          </label>
+          <label class="full-width">
+            Job Notes
+            <textarea id="jobNotes" rows="3" placeholder="Materials, scope, crew notes, or progress updates"></textarea>
           </label>
           <div class="form-actions">
             <button type="submit">Add to Tomorrow</button>
