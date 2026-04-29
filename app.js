@@ -86,7 +86,6 @@ const refs = {
   inspectionForm: document.getElementById("inspectionForm"),
   inspectionFormTitle: document.getElementById("inspectionFormTitle"),
   inspectionId: document.getElementById("inspectionId"),
-  inspectionCustomerMode: document.getElementById("inspectionCustomerMode"),
   inspectionCustomer: document.getElementById("inspectionCustomer"),
   inspectionJob: document.getElementById("inspectionJob"),
   inspectionList: document.getElementById("inspectionList"),
@@ -287,7 +286,7 @@ function wireEvents() {
   refs.todayJobServiceType.addEventListener("change", syncTodayRoundFieldVisibility);
   refs.planningDate.addEventListener("change", handlePlanningDateChange);
   refs.inspectionJob.addEventListener("change", handleInspectionJobSelection);
-  refs.inspectionCustomerMode.addEventListener("change", syncInspectionCustomerMode);
+  refs.inspectionCustomer.addEventListener("change", syncInspectionCustomerMode);
   ["change", "input"].forEach((eventName) => {
     document.getElementById("jobDuration").addEventListener(eventName, syncTomorrowEndTime);
     document.getElementById("jobTimeStart").addEventListener(eventName, syncTomorrowEndTime);
@@ -376,12 +375,16 @@ function populateServiceOptions() {
 
 function renderCustomerOptions() {
   const customers = [...state.customers].sort((a, b) => a.name.localeCompare(b.name));
-  const options = customers
+  const standardOptions = customers
     .map((customer) => `<option value="${customer.id}">${customer.name} - ${customer.address}</option>`)
     .join("");
-  refs.jobCustomer.innerHTML = options;
-  refs.todayJobCustomer.innerHTML = options;
-  refs.inspectionCustomer.innerHTML = options;
+  const inspectionOptions = [
+    '<option value="__new__">Add New Customer</option>',
+    ...customers.map((customer) => `<option value="${customer.id}">${customer.name} - ${customer.address}</option>`),
+  ].join("");
+  refs.jobCustomer.innerHTML = standardOptions;
+  refs.todayJobCustomer.innerHTML = standardOptions;
+  refs.inspectionCustomer.innerHTML = inspectionOptions;
 }
 
 function renderInspectionOptions() {
@@ -396,8 +399,7 @@ function renderInspectionOptions() {
 }
 
 function syncInspectionCustomerMode() {
-  const isNewCustomer = refs.inspectionCustomerMode.value === "new";
-  refs.inspectionCustomer.disabled = isNewCustomer;
+  const isNewCustomer = refs.inspectionCustomer.value === "__new__";
 
   [
     "inspectionNewCustomerNameField",
@@ -1034,7 +1036,7 @@ function resetInspectionForm() {
   refs.inspectionForm.reset();
   refs.inspectionId.value = "";
   refs.inspectionFormTitle.textContent = "New Inspection";
-  refs.inspectionCustomerMode.value = "existing";
+  refs.inspectionCustomer.value = "__new__";
   document.getElementById("inspectionDate").value = formatDateKey(new Date());
   document.getElementById("inspectionDraftDate").value = getPlanningDateKey();
   document.getElementById("inspectionZoneCount").value = 0;
@@ -1072,7 +1074,6 @@ function openTodayJobFormForCreate() {
 function openInspectionFormForJob(job) {
   setActiveView("inspections");
   resetInspectionForm();
-  refs.inspectionCustomerMode.value = "existing";
   refs.inspectionCustomer.value = job.customerId;
   refs.inspectionJob.value = job.id;
   refs.inspectionFormTitle.textContent = `New Inspection for ${job.customerName}`;
@@ -1086,8 +1087,7 @@ function startInspectionEdit(inspectionId) {
   setActiveView("inspections");
   refs.inspectionFormTitle.textContent = "Edit Inspection";
   refs.inspectionId.value = inspection.id;
-  refs.inspectionCustomerMode.value = state.customers.some((entry) => entry.id === inspection.customerId) ? "existing" : "new";
-  refs.inspectionCustomer.value = inspection.customerId;
+  refs.inspectionCustomer.value = state.customers.some((entry) => entry.id === inspection.customerId) ? inspection.customerId : "__new__";
   refs.inspectionJob.value = inspection.jobId || "";
   document.getElementById("inspectionDate").value = inspection.inspectionDate || formatDateKey(new Date());
   document.getElementById("inspectionDraftDate").value = inspection.draftDate || getPlanningDateKey();
@@ -1170,7 +1170,6 @@ function createDraftJobFromInspection(inspectionId) {
 function handleInspectionJobSelection() {
   const linkedJob = refs.inspectionJob.value ? findJobById(refs.inspectionJob.value) : null;
   if (!linkedJob) return;
-  refs.inspectionCustomerMode.value = "existing";
   refs.inspectionCustomer.value = linkedJob.customerId;
   syncInspectionCustomerMode();
 }
@@ -1184,7 +1183,7 @@ function handlePlanningDateChange() {
 }
 
 function getInspectionCustomerFromForm() {
-  if (refs.inspectionCustomerMode.value === "existing") {
+  if (refs.inspectionCustomer.value !== "__new__") {
     return state.customers.find((entry) => entry.id === refs.inspectionCustomer.value) || null;
   }
 
@@ -1204,7 +1203,6 @@ function getInspectionCustomerFromForm() {
   );
 
   if (existingCustomer) {
-    refs.inspectionCustomerMode.value = "existing";
     refs.inspectionCustomer.value = existingCustomer.id;
     syncInspectionCustomerMode();
     return existingCustomer;
@@ -1218,7 +1216,6 @@ function getInspectionCustomerFromForm() {
     notes,
   };
   state.customers.push(customer);
-  refs.inspectionCustomerMode.value = "existing";
   refs.inspectionCustomer.value = customer.id;
   syncInspectionCustomerMode();
   showToast("New customer added from inspection");
