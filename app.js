@@ -72,6 +72,7 @@ const refs = {
   tomorrowJobs: document.getElementById("tomorrowJobs"),
   messageList: document.getElementById("messageList"),
   customerList: document.getElementById("customerList"),
+  planningDate: document.getElementById("planningDate"),
   jobCustomer: document.getElementById("jobCustomer"),
   jobServiceType: document.getElementById("jobServiceType"),
   jobRoundField: document.getElementById("jobRoundField"),
@@ -82,6 +83,13 @@ const refs = {
   customerId: document.getElementById("customerId"),
   cancelCustomerEditBtn: document.getElementById("cancelCustomerEditBtn"),
   cancelTodayJobEditBtn: document.getElementById("cancelTodayJobEditBtn"),
+  inspectionForm: document.getElementById("inspectionForm"),
+  inspectionFormTitle: document.getElementById("inspectionFormTitle"),
+  inspectionId: document.getElementById("inspectionId"),
+  inspectionCustomer: document.getElementById("inspectionCustomer"),
+  inspectionJob: document.getElementById("inspectionJob"),
+  inspectionList: document.getElementById("inspectionList"),
+  cancelInspectionEditBtn: document.getElementById("cancelInspectionEditBtn"),
 };
 
 init().catch((error) => {
@@ -118,8 +126,10 @@ function loadInitialState() {
       [today]: seededJobs,
       [tomorrow]: [],
     },
+    inspections: [],
     ui: {
       activeView: "dashboard",
+      scheduleDate: tomorrow,
       editingCustomerId: null,
     },
   };
@@ -266,12 +276,16 @@ function wireEvents() {
   refs.jobForm.addEventListener("submit", handleAddJob);
   refs.todayJobForm.addEventListener("submit", handleSaveTodayJob);
   refs.customerForm.addEventListener("submit", handleSaveCustomer);
+  refs.inspectionForm.addEventListener("submit", handleSaveInspection);
   refs.cancelCustomerEditBtn.addEventListener("click", resetCustomerForm);
   refs.cancelTodayJobEditBtn.addEventListener("click", closeTodayJobForm);
+  refs.cancelInspectionEditBtn.addEventListener("click", resetInspectionForm);
   refs.openTodayJobFormBtn.addEventListener("click", openTodayJobFormForCreate);
   refs.exportCompletedBtn.addEventListener("click", exportCompletedJobs);
   refs.jobServiceType.addEventListener("change", syncRoundFieldVisibility);
   refs.todayJobServiceType.addEventListener("change", syncTodayRoundFieldVisibility);
+  refs.planningDate.addEventListener("change", handlePlanningDateChange);
+  refs.inspectionJob.addEventListener("change", handleInspectionJobSelection);
   ["change", "input"].forEach((eventName) => {
     document.getElementById("jobDuration").addEventListener(eventName, syncTomorrowEndTime);
     document.getElementById("jobTimeStart").addEventListener(eventName, syncTomorrowEndTime);
@@ -287,7 +301,9 @@ function wireEvents() {
 
 function renderAll() {
   setActiveView(state.ui.activeView, false);
+  refs.planningDate.value = getPlanningDateKey();
   renderCustomerOptions();
+  renderInspectionOptions();
   syncRoundFieldVisibility();
   syncTodayRoundFieldVisibility();
   syncTomorrowEndTime();
@@ -297,9 +313,13 @@ function renderAll() {
   renderTodayJobs();
   renderTomorrowJobs();
   renderCustomers();
+  renderInspections();
   renderMessages();
   if (!refs.todayJobId.value) {
     resetTodayJobForm();
+  }
+  if (!refs.inspectionId.value) {
+    resetInspectionForm();
   }
 }
 
@@ -358,6 +378,18 @@ function renderCustomerOptions() {
     .join("");
   refs.jobCustomer.innerHTML = options;
   refs.todayJobCustomer.innerHTML = options;
+  refs.inspectionCustomer.innerHTML = options;
+}
+
+function renderInspectionOptions() {
+  const irrigationJobs = getAllJobs()
+    .filter((job) => isIrrigationService(job.serviceType))
+    .sort((a, b) => `${a.date}-${String(a.order).padStart(3, "0")}`.localeCompare(`${b.date}-${String(b.order).padStart(3, "0")}`));
+
+  refs.inspectionJob.innerHTML = [
+    '<option value="">No linked job</option>',
+    ...irrigationJobs.map((job) => `<option value="${job.id}">${job.date} | ${job.customerName} | ${formatServiceLabel(job)}</option>`),
+  ].join("");
 }
 
 function syncRoundFieldVisibility() {
@@ -432,11 +464,11 @@ function renderTodayJobs() {
 }
 
 function renderTomorrowJobs() {
-  const tomorrowJobs = getJobsForDate(getTomorrowKey());
+  const tomorrowJobs = getJobsForDate(getPlanningDateKey());
   refs.tomorrowJobs.innerHTML = "";
 
   if (!tomorrowJobs.length) {
-    refs.tomorrowJobs.innerHTML = '<div class="empty-state">Add tomorrow\'s jobs here.</div>';
+    refs.tomorrowJobs.innerHTML = '<div class="empty-state">Add jobs for this date here.</div>';
     return;
   }
 
@@ -492,11 +524,58 @@ function renderCustomers() {
     });
 }
 
+function renderInspections() {
+  refs.inspectionList.innerHTML = "";
+  const inspections = [...state.inspections].sort((a, b) => `${b.inspectionDate}-${b.createdAt}`.localeCompare(`${a.inspectionDate}-${a.createdAt}`));
+
+  if (!inspections.length) {
+    refs.inspectionList.innerHTML = '<div class="empty-state">No irrigation inspections saved yet.</div>';
+    return;
+  }
+
+  inspections.forEach((inspection) => {
+    const customer = state.customers.find((entry) => entry.id === inspection.customerId);
+    const linkedJob = inspection.jobId ? findJobById(inspection.jobId) : null;
+    const card = document.createElement("article");
+    card.className = "inspection-card";
+    card.innerHTML = `
+      <div class="customer-header">
+        <div>
+          <h3>${escapeHtml(customer?.name || inspection.customerName || "Unknown Customer")}</h3>
+          <p>${escapeHtml(formatInspectionTitle(inspection, linkedJob))}</p>
+        </div>
+      </div>
+      <div class="inspection-facts">
+        <span>Draft Date: ${escapeHtml(inspection.draftDate || "Not set")}</span>
+        <span>Zones: ${escapeHtml(String(inspection.zoneCount || 0))}</span>
+        <span>Issue Zones: ${escapeHtml(inspection.issueZones || "None listed")}</span>
+        <span>Broken Heads: ${escapeHtml(String(inspection.brokenHeads || 0))}</span>
+        <span>Controller: ${escapeHtml(inspection.controllerType || "Not listed")}</span>
+        <span>Location: ${escapeHtml(inspection.controllerLocation || "Not listed")}</span>
+        <span>Flags: ${escapeHtml(formatInspectionFlags(inspection))}</span>
+      </div>
+      <div class="inspection-notes">${escapeHtml(buildInspectionNotesSummary(inspection))}</div>
+      <div class="job-actions">
+        <button class="secondary" data-action="edit">Edit</button>
+        <button class="ghost" data-action="draft-job">Create Draft Job</button>
+        <button class="ghost" data-action="copy">Copy Summary</button>
+        <button class="warn" data-action="delete">Delete</button>
+      </div>
+    `;
+
+    card.querySelector('[data-action="edit"]').addEventListener("click", () => startInspectionEdit(inspection.id));
+    card.querySelector('[data-action="draft-job"]').addEventListener("click", () => createDraftJobFromInspection(inspection.id));
+    card.querySelector('[data-action="copy"]').addEventListener("click", () => copyText(buildInspectionCopySummary(inspection), "Inspection summary copied"));
+    card.querySelector('[data-action="delete"]').addEventListener("click", () => deleteInspection(inspection.id));
+    refs.inspectionList.append(card);
+  });
+}
+
 function renderMessages() {
-  const tomorrowJobs = getJobsForDate(getTomorrowKey());
+  const tomorrowJobs = getJobsForDate(getPlanningDateKey());
   if (!tomorrowJobs.length) {
     refs.messageList.className = "message-list empty-state";
-    refs.messageList.textContent = "Generate messages after adding tomorrow's jobs.";
+    refs.messageList.textContent = "Generate messages after adding jobs for the selected date.";
     return;
   }
 
@@ -561,6 +640,7 @@ function createJobCard(job, includeFieldActions, isNextJob) {
       <button class="secondary" data-action="on-my-way">On My Way</button>
       <button class="secondary" data-action="started">Started</button>
       <button class="secondary" data-action="completed">Completed</button>
+      ${isIrrigationService(job.serviceType) ? '<button class="ghost" data-action="inspection">Inspection</button>' : ""}
       <button class="warn" data-action="running-late">Running Late</button>
     `;
     actions.addEventListener("click", (event) => {
@@ -616,6 +696,11 @@ async function handleTodayAction(event, jobId) {
     await sendCustomerMessage(job, message, "Running late text sent", "Running late message copied");
   }
 
+  if (action === "inspection") {
+    openInspectionFormForJob(job);
+    return;
+  }
+
   sortJobs(todayKey);
   saveState();
   renderTodayJobs();
@@ -624,8 +709,8 @@ async function handleTodayAction(event, jobId) {
 function handleTomorrowJobAction(event, jobId) {
   const action = event.target.dataset.action;
   if (!action) return;
-  const tomorrowKey = getTomorrowKey();
-  const jobs = getJobsForDate(tomorrowKey);
+  const planningKey = getPlanningDateKey();
+  const jobs = getJobsForDate(planningKey);
   const index = jobs.findIndex((job) => job.id === jobId);
   if (index === -1) return;
 
@@ -672,17 +757,17 @@ function handleAddJob(event) {
   const projectName = document.getElementById("jobProjectName").value.trim();
   const assignedTo = document.getElementById("jobAssignedTo").value.trim();
   const notes = document.getElementById("jobNotes").value.trim();
-  const tomorrowKey = getTomorrowKey();
-  const jobs = getJobsForDate(tomorrowKey);
+  const planningKey = getPlanningDateKey();
+  const jobs = getJobsForDate(planningKey);
 
-  const job = buildJob(customer, serviceType, duration, order, start, end, tomorrowKey, serviceRound, {
+  const job = buildJob(customer, serviceType, duration, order, start, end, planningKey, serviceRound, {
     projectName,
     assignedTo,
     notes,
   });
   jobs.push(job);
-  sortJobs(tomorrowKey);
-  reindexJobs(tomorrowKey);
+  sortJobs(planningKey);
+  reindexJobs(planningKey);
   saveState();
   refs.jobForm.reset();
   document.getElementById("jobDuration").value = 60;
@@ -694,7 +779,7 @@ function handleAddJob(event) {
   syncTomorrowEndTime();
   renderTomorrowJobs();
   renderMessages();
-  showToast("Job added to tomorrow");
+  showToast("Job added to schedule");
 }
 
 function handleSaveTodayJob(event) {
@@ -859,6 +944,55 @@ function resetCustomerForm() {
   refs.customerFormTitle.textContent = "Add Customer";
 }
 
+function handleSaveInspection(event) {
+  event.preventDefault();
+  const customer = state.customers.find((entry) => entry.id === refs.inspectionCustomer.value);
+  if (!customer) return;
+
+  const linkedJob = refs.inspectionJob.value ? findJobById(refs.inspectionJob.value) : null;
+  const inspectionId = refs.inspectionId.value;
+  const payload = {
+    customerId: customer.id,
+    customerName: customer.name,
+    jobId: linkedJob?.id || "",
+    jobDate: linkedJob?.date || "",
+    inspectionDate: document.getElementById("inspectionDate").value || formatDateKey(new Date()),
+    draftDate: document.getElementById("inspectionDraftDate").value || getPlanningDateKey(),
+    zoneCount: Number(document.getElementById("inspectionZoneCount").value || 0),
+    issueZones: document.getElementById("inspectionIssueZones").value.trim(),
+    brokenHeads: Number(document.getElementById("inspectionBrokenHeads").value || 0),
+    headTypes: document.getElementById("inspectionHeadTypes").value.trim(),
+    controllerType: document.getElementById("inspectionControllerType").value.trim(),
+    controllerLocation: document.getElementById("inspectionControllerLocation").value.trim(),
+    leakDetected: document.getElementById("inspectionLeakDetected").checked,
+    valveIssue: document.getElementById("inspectionValveIssue").checked,
+    wiringIssue: document.getElementById("inspectionWiringIssue").checked,
+    controllerIssue: document.getElementById("inspectionControllerIssue").checked,
+    repairsNeeded: document.getElementById("inspectionRepairsNeeded").value.trim(),
+    materialsNeeded: document.getElementById("inspectionMaterialsNeeded").value.trim(),
+    notes: document.getElementById("inspectionNotes").value.trim(),
+  };
+
+  if (inspectionId) {
+    const inspection = state.inspections.find((entry) => entry.id === inspectionId);
+    if (!inspection) return;
+    Object.assign(inspection, payload, { updatedAt: new Date().toISOString() });
+    showToast("Inspection updated");
+  } else {
+    state.inspections.push({
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ...payload,
+    });
+    showToast("Inspection saved");
+  }
+
+  saveState();
+  renderInspections();
+  resetInspectionForm();
+}
+
 function resetTodayJobForm() {
   refs.todayJobForm.reset();
   refs.todayJobId.value = "";
@@ -873,6 +1007,16 @@ function resetTodayJobForm() {
   refs.todayJobServiceRound.value = "1";
   syncTodayRoundFieldVisibility();
   syncTodayEndTime();
+}
+
+function resetInspectionForm() {
+  refs.inspectionForm.reset();
+  refs.inspectionId.value = "";
+  refs.inspectionFormTitle.textContent = "New Inspection";
+  document.getElementById("inspectionDate").value = formatDateKey(new Date());
+  document.getElementById("inspectionDraftDate").value = getPlanningDateKey();
+  document.getElementById("inspectionZoneCount").value = 0;
+  document.getElementById("inspectionBrokenHeads").value = 0;
 }
 
 function openTodayJobForm() {
@@ -898,23 +1042,113 @@ function openTodayJobFormForCreate() {
   refs.todayJobForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+function openInspectionFormForJob(job) {
+  setActiveView("inspections");
+  resetInspectionForm();
+  refs.inspectionCustomer.value = job.customerId;
+  refs.inspectionJob.value = job.id;
+  refs.inspectionFormTitle.textContent = `New Inspection for ${job.customerName}`;
+  refs.inspectionForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function startInspectionEdit(inspectionId) {
+  const inspection = state.inspections.find((entry) => entry.id === inspectionId);
+  if (!inspection) return;
+  setActiveView("inspections");
+  refs.inspectionFormTitle.textContent = "Edit Inspection";
+  refs.inspectionId.value = inspection.id;
+  refs.inspectionCustomer.value = inspection.customerId;
+  refs.inspectionJob.value = inspection.jobId || "";
+  document.getElementById("inspectionDate").value = inspection.inspectionDate || formatDateKey(new Date());
+  document.getElementById("inspectionDraftDate").value = inspection.draftDate || getPlanningDateKey();
+  document.getElementById("inspectionZoneCount").value = inspection.zoneCount || 0;
+  document.getElementById("inspectionIssueZones").value = inspection.issueZones || "";
+  document.getElementById("inspectionBrokenHeads").value = inspection.brokenHeads || 0;
+  document.getElementById("inspectionHeadTypes").value = inspection.headTypes || "";
+  document.getElementById("inspectionControllerType").value = inspection.controllerType || "";
+  document.getElementById("inspectionControllerLocation").value = inspection.controllerLocation || "";
+  document.getElementById("inspectionLeakDetected").checked = Boolean(inspection.leakDetected);
+  document.getElementById("inspectionValveIssue").checked = Boolean(inspection.valveIssue);
+  document.getElementById("inspectionWiringIssue").checked = Boolean(inspection.wiringIssue);
+  document.getElementById("inspectionControllerIssue").checked = Boolean(inspection.controllerIssue);
+  document.getElementById("inspectionRepairsNeeded").value = inspection.repairsNeeded || "";
+  document.getElementById("inspectionMaterialsNeeded").value = inspection.materialsNeeded || "";
+  document.getElementById("inspectionNotes").value = inspection.notes || "";
+  refs.inspectionForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function deleteCustomer(customerId) {
   state.customers = state.customers.filter((entry) => entry.id !== customerId);
   Object.keys(state.schedules).forEach((dateKey) => {
     state.schedules[dateKey] = state.schedules[dateKey].filter((job) => job.customerId !== customerId);
   });
+  state.inspections = state.inspections.filter((inspection) => inspection.customerId !== customerId);
   saveState();
   renderCustomerOptions();
   renderCustomers();
+  renderInspections();
   renderTodayJobs();
   renderTomorrowJobs();
   renderMessages();
   showToast("Customer deleted");
 }
 
+function deleteInspection(inspectionId) {
+  state.inspections = state.inspections.filter((entry) => entry.id !== inspectionId);
+  saveState();
+  renderInspections();
+  resetInspectionForm();
+  showToast("Inspection deleted");
+}
+
+function createDraftJobFromInspection(inspectionId) {
+  const inspection = state.inspections.find((entry) => entry.id === inspectionId);
+  if (!inspection) return;
+  const customer = state.customers.find((entry) => entry.id === inspection.customerId);
+  if (!customer) {
+    showToast("Customer missing for inspection");
+    return;
+  }
+
+  const linkedJob = inspection.jobId ? findJobById(inspection.jobId) : null;
+  state.ui.scheduleDate = inspection.draftDate || getPlanningDateKey();
+  refs.planningDate.value = state.ui.scheduleDate;
+  setActiveView("schedule");
+  refs.jobCustomer.value = customer.id;
+  refs.jobServiceType.value = linkedJob?.serviceType || "Irrigation Repair";
+  refs.jobServiceRound.value = "1";
+  document.getElementById("jobProjectName").value = linkedJob?.projectName || `Inspection Follow-up - ${customer.name}`;
+  document.getElementById("jobAssignedTo").value = linkedJob?.assignedTo || "";
+  document.getElementById("jobDuration").value = linkedJob?.estimatedDuration || 120;
+  document.getElementById("jobOrder").value = getJobsForDate(getPlanningDateKey()).length + 1;
+  document.getElementById("jobTimeStart").value = linkedJob?.timeWindowStart || "08:00";
+  document.getElementById("jobNotes").value = buildInspectionDraftNotes(inspection);
+  syncRoundFieldVisibility();
+  syncTomorrowEndTime();
+  renderTomorrowJobs();
+  renderMessages();
+  refs.jobForm.scrollIntoView({ behavior: "smooth", block: "start" });
+  saveState();
+  showToast("Draft job filled from inspection");
+}
+
+function handleInspectionJobSelection() {
+  const linkedJob = refs.inspectionJob.value ? findJobById(refs.inspectionJob.value) : null;
+  if (!linkedJob) return;
+  refs.inspectionCustomer.value = linkedJob.customerId;
+}
+
+function handlePlanningDateChange() {
+  state.ui.scheduleDate = refs.planningDate.value || getTomorrowKey();
+  saveState();
+  renderTomorrowJobs();
+  renderMessages();
+  document.getElementById("jobOrder").value = getJobsForDate(getPlanningDateKey()).length + 1;
+}
+
 function autoAssignTomorrowWindows() {
-  const tomorrowKey = getTomorrowKey();
-  const jobs = getJobsForDate(tomorrowKey);
+  const planningKey = getPlanningDateKey();
+  const jobs = getJobsForDate(planningKey);
   let pointer = "08:00";
   jobs.forEach((job) => {
     job.timeWindowStart = pointer;
@@ -926,15 +1160,15 @@ function autoAssignTomorrowWindows() {
   saveState();
   renderTomorrowJobs();
   renderMessages();
-  showToast("Tomorrow windows assigned");
+  showToast("Schedule windows assigned");
 }
 
 function clearTomorrow() {
-  state.schedules[getTomorrowKey()] = [];
+  state.schedules[getPlanningDateKey()] = [];
   saveState();
   renderTomorrowJobs();
   renderMessages();
-  showToast("Tomorrow cleared");
+  showToast("Schedule cleared");
 }
 
 function syncDashboardFromToday() {
@@ -946,7 +1180,7 @@ function syncDashboardFromToday() {
 }
 
 function continueJobToTomorrow(job) {
-  const tomorrowKey = getTomorrowKey();
+  const tomorrowKey = getNextDateKey(job.date);
   const tomorrowJobs = getJobsForDate(tomorrowKey);
   const duplicate = tomorrowJobs.find((entry) =>
     entry.projectId === job.projectId &&
@@ -956,7 +1190,7 @@ function continueJobToTomorrow(job) {
   );
 
   if (duplicate) {
-    showToast("That continued job is already on tomorrow");
+    showToast("That continued job is already on the next day");
     return;
   }
 
@@ -990,12 +1224,20 @@ function continueJobToTomorrow(job) {
   saveState();
   renderTomorrowJobs();
   renderMessages();
-  showToast("Job continued into tomorrow");
+  showToast("Job continued into the next day");
 }
 
 function getJobsForDate(dateKey) {
   if (!state.schedules[dateKey]) state.schedules[dateKey] = [];
   return state.schedules[dateKey];
+}
+
+function getAllJobs() {
+  return Object.values(state.schedules).flat();
+}
+
+function findJobById(jobId) {
+  return getAllJobs().find((job) => job.id === jobId) || null;
 }
 
 function sortJobs(dateKey) {
@@ -1009,7 +1251,7 @@ function reindexJobs(dateKey) {
 }
 
 function renderMessagesText() {
-  return getJobsForDate(getTomorrowKey()).map(buildNightBeforeMessage).join("\n\n");
+  return getJobsForDate(getPlanningDateKey()).map(buildNightBeforeMessage).join("\n\n");
 }
 
 function copyAllMessages() {
@@ -1022,7 +1264,7 @@ function copyAllMessages() {
 }
 
 function buildNightBeforeMessage(job) {
-  return `Hey ${getFirstName(job.customerName)}, this is Weedless Lawn Care & Irrigation. I've got you scheduled for tomorrow with an arrival window of ${job.timeWindow} for ${formatServiceLabel(job)}. Thanks!`;
+  return `Hey ${getFirstName(job.customerName)}, this is Weedless Lawn Care & Irrigation. I've got you scheduled for ${formatLongDate(job.date)} with an arrival window of ${job.timeWindow} for ${formatServiceLabel(job)}. Thanks!`;
 }
 
 function buildJobDetailLine(job) {
@@ -1030,7 +1272,62 @@ function buildJobDetailLine(job) {
   if (job.projectName) details.push(`Project: ${job.projectName}`);
   if (job.assignedTo) details.push(`Crew: ${job.assignedTo}`);
   if (job.notes) details.push(`Notes: ${job.notes}`);
-  return details.join(" • ");
+  return details.join(" | ");
+}
+
+function formatInspectionTitle(inspection, linkedJob) {
+  const jobLabel = linkedJob ? formatServiceLabel(linkedJob) : "Standalone inspection";
+  return `${inspection.inspectionDate} | ${jobLabel}`;
+}
+
+function formatInspectionFlags(inspection) {
+  const flags = [];
+  if (inspection.leakDetected) flags.push("Leak");
+  if (inspection.valveIssue) flags.push("Valve");
+  if (inspection.wiringIssue) flags.push("Wiring");
+  if (inspection.controllerIssue) flags.push("Controller");
+  return flags.length ? flags.join(", ") : "No flagged issues";
+}
+
+function buildInspectionNotesSummary(inspection) {
+  const parts = [];
+  if (inspection.repairsNeeded) parts.push(`Repairs Needed:\n${inspection.repairsNeeded}`);
+  if (inspection.materialsNeeded) parts.push(`Materials Needed:\n${inspection.materialsNeeded}`);
+  if (inspection.notes) parts.push(`Notes:\n${inspection.notes}`);
+  return parts.join("\n\n") || "No inspection notes added yet.";
+}
+
+function buildInspectionCopySummary(inspection) {
+  const customer = state.customers.find((entry) => entry.id === inspection.customerId);
+  return [
+    `Inspection: ${customer?.name || inspection.customerName || "Unknown Customer"}`,
+    `Date: ${inspection.inspectionDate}`,
+    `Draft Date: ${inspection.draftDate || "Not set"}`,
+    `Zones: ${inspection.zoneCount || 0}`,
+    `Issue Zones: ${inspection.issueZones || "None listed"}`,
+    `Broken Heads: ${inspection.brokenHeads || 0}`,
+    `Head Types: ${inspection.headTypes || "Not listed"}`,
+    `Controller: ${inspection.controllerType || "Not listed"}`,
+    `Controller Location: ${inspection.controllerLocation || "Not listed"}`,
+    `Flags: ${formatInspectionFlags(inspection)}`,
+    `Repairs Needed: ${inspection.repairsNeeded || "None listed"}`,
+    `Materials Needed: ${inspection.materialsNeeded || "None listed"}`,
+    `Notes: ${inspection.notes || "None listed"}`,
+  ].join("\n");
+}
+
+function buildInspectionDraftNotes(inspection) {
+  return [
+    `Drafted from irrigation inspection on ${inspection.inspectionDate}.`,
+    inspection.issueZones ? `Issue zones: ${inspection.issueZones}` : "",
+    inspection.brokenHeads ? `Broken heads: ${inspection.brokenHeads}` : "",
+    inspection.headTypes ? `Head types: ${inspection.headTypes}` : "",
+    inspection.controllerType ? `Controller: ${inspection.controllerType}` : "",
+    inspection.controllerLocation ? `Controller location: ${inspection.controllerLocation}` : "",
+    inspection.repairsNeeded ? `Repairs needed: ${inspection.repairsNeeded}` : "",
+    inspection.materialsNeeded ? `Materials needed: ${inspection.materialsNeeded}` : "",
+    inspection.notes ? `Inspection notes: ${inspection.notes}` : "",
+  ].filter(Boolean).join("\n");
 }
 
 function syncCustomerReferences(customer) {
@@ -1042,6 +1339,11 @@ function syncCustomerReferences(customer) {
         job.address = customer.address;
       }
     });
+  });
+  state.inspections.forEach((inspection) => {
+    if (inspection.customerId === customer.id) {
+      inspection.customerName = customer.name;
+    }
   });
 }
 
@@ -1218,6 +1520,25 @@ function getTomorrowKey() {
   return formatDateKey(tomorrow);
 }
 
+function getPlanningDateKey() {
+  return state.ui.scheduleDate || getTomorrowKey();
+}
+
+function getNextDateKey(dateKey) {
+  const nextDate = new Date(`${dateKey}T00:00:00`);
+  nextDate.setDate(nextDate.getDate() + 1);
+  return formatDateKey(nextDate);
+}
+
+function formatLongDate(dateKey) {
+  const date = new Date(`${dateKey}T00:00:00`);
+  return date.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 function formatTime(value) {
   const [hourText, minute] = value.split(":");
   const hour = Number(hourText);
@@ -1261,6 +1582,7 @@ function registerServiceWorker() {
 function migrateState(savedState) {
   const customers = Array.isArray(savedState?.customers) ? savedState.customers : sampleCustomers;
   const schedules = savedState?.schedules && typeof savedState.schedules === "object" ? savedState.schedules : {};
+  const inspections = Array.isArray(savedState?.inspections) ? savedState.inspections : [];
 
   Object.values(schedules).forEach((jobs) => {
     if (!Array.isArray(jobs)) return;
@@ -1276,14 +1598,43 @@ function migrateState(savedState) {
     });
   });
 
+  inspections.forEach((inspection) => {
+    inspection.customerName = inspection.customerName || "";
+    inspection.jobId = inspection.jobId || "";
+    inspection.jobDate = inspection.jobDate || "";
+    inspection.inspectionDate = inspection.inspectionDate || formatDateKey(new Date());
+    inspection.draftDate = inspection.draftDate || getTomorrowKey();
+    inspection.zoneCount = Number(inspection.zoneCount || 0);
+    inspection.issueZones = inspection.issueZones || "";
+    inspection.brokenHeads = Number(inspection.brokenHeads || 0);
+    inspection.headTypes = inspection.headTypes || "";
+    inspection.controllerType = inspection.controllerType || "";
+    inspection.controllerLocation = inspection.controllerLocation || "";
+    inspection.leakDetected = Boolean(inspection.leakDetected);
+    inspection.valveIssue = Boolean(inspection.valveIssue);
+    inspection.wiringIssue = Boolean(inspection.wiringIssue);
+    inspection.controllerIssue = Boolean(inspection.controllerIssue);
+    inspection.repairsNeeded = inspection.repairsNeeded || "";
+    inspection.materialsNeeded = inspection.materialsNeeded || "";
+    inspection.notes = inspection.notes || "";
+    inspection.createdAt = inspection.createdAt || new Date().toISOString();
+    inspection.updatedAt = inspection.updatedAt || inspection.createdAt;
+  });
+
   return {
     customers,
     schedules,
+    inspections,
     ui: {
       activeView: savedState?.ui?.activeView || "dashboard",
+      scheduleDate: savedState?.ui?.scheduleDate || getTomorrowKey(),
       editingCustomerId: null,
     },
   };
+}
+
+function isIrrigationService(serviceType) {
+  return serviceType === "Irrigation Repair" || serviceType === "Irrigation Install";
 }
 
 function normalizeServiceRound(serviceType, serviceRound) {

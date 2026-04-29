@@ -29,6 +29,7 @@
       <button class="tab-button active" data-view="dashboard">Today</button>
       <button class="tab-button" data-view="schedule">Tomorrow</button>
       <button class="tab-button" data-view="customers">Customers</button>
+      <button class="tab-button" data-view="inspections">Inspections</button>
     </nav>
 
     <main id="appContent">
@@ -131,10 +132,14 @@
       <section class="view" id="scheduleView" data-view="schedule">
         <div class="section-heading">
           <div>
-            <h2>Tomorrow Builder</h2>
-            <p>Plan the next day, set order, and prepare text messages.</p>
+            <h2>Schedule Builder</h2>
+            <p>Plan any service date, set order, and prepare customer text messages.</p>
           </div>
           <div class="heading-actions">
+            <label>
+              Schedule Date
+              <input id="planningDate" type="date">
+            </label>
             <button class="secondary" id="autoAssignBtn">Auto Assign Time Windows</button>
             <button id="generateMessagesBtn">Generate Night-Before Messages</button>
           </div>
@@ -223,8 +228,8 @@
         <div class="section-split">
           <section class="panel">
             <div class="panel-header">
-              <h3>Tomorrow's Jobs</h3>
-              <button class="ghost" id="clearTomorrowBtn">Clear Tomorrow</button>
+              <h3>Scheduled Jobs</h3>
+              <button class="ghost" id="clearTomorrowBtn">Clear Selected Date</button>
             </div>
             <div id="tomorrowJobs" class="card-stack compact"></div>
           </section>
@@ -275,6 +280,101 @@
         </form>
 
         <div id="customerList" class="card-stack"></div>
+      </section>
+
+      <section class="view" id="inspectionsView" data-view="inspections">
+        <div class="section-heading">
+          <div>
+            <h2>Irrigation Inspections</h2>
+            <p>Capture pre-job walkthrough details before repair or install work starts.</p>
+          </div>
+        </div>
+
+        <form id="inspectionForm" class="panel form-grid">
+          <h3 id="inspectionFormTitle">New Inspection</h3>
+          <input id="inspectionId" type="hidden">
+          <label>
+            Customer
+            <select id="inspectionCustomer" required></select>
+          </label>
+          <label>
+            Related Job
+            <select id="inspectionJob">
+              <option value="">No linked job</option>
+            </select>
+          </label>
+          <label>
+            Inspection Date
+            <input id="inspectionDate" type="date" required>
+          </label>
+          <label>
+            Draft Job Date
+            <input id="inspectionDraftDate" type="date">
+          </label>
+          <label>
+            Zone Count
+            <input id="inspectionZoneCount" type="number" min="0" step="1" value="0">
+          </label>
+          <label>
+            Zones With Issues
+            <input id="inspectionIssueZones" type="text" placeholder="1, 3, 5 front bed">
+          </label>
+          <label>
+            Broken Heads
+            <input id="inspectionBrokenHeads" type="number" min="0" step="1" value="0">
+          </label>
+          <label>
+            Head Types
+            <input id="inspectionHeadTypes" type="text" placeholder="Spray, rotor, drip, MP rotator">
+          </label>
+          <label>
+            Controller Type
+            <input id="inspectionControllerType" type="text" placeholder="Hunter X2, Rain Bird ESP, etc.">
+          </label>
+          <label>
+            Controller Location
+            <input id="inspectionControllerLocation" type="text" placeholder="Garage, side yard, utility room">
+          </label>
+          <label class="checkbox-field">
+            <input id="inspectionLeakDetected" type="checkbox">
+            Leak detected
+          </label>
+          <label class="checkbox-field">
+            <input id="inspectionValveIssue" type="checkbox">
+            Valve issue
+          </label>
+          <label class="checkbox-field">
+            <input id="inspectionWiringIssue" type="checkbox">
+            Wiring issue
+          </label>
+          <label class="checkbox-field">
+            <input id="inspectionControllerIssue" type="checkbox">
+            Controller issue
+          </label>
+          <label class="full-width">
+            Repairs Needed
+            <textarea id="inspectionRepairsNeeded" rows="3" placeholder="List needed repairs by zone or area"></textarea>
+          </label>
+          <label class="full-width">
+            Materials Needed
+            <textarea id="inspectionMaterialsNeeded" rows="3" placeholder="Heads, nozzles, pipe, valves, wire, controller, etc."></textarea>
+          </label>
+          <label class="full-width">
+            Inspection Notes
+            <textarea id="inspectionNotes" rows="4" placeholder="Anything Jeremy would normally put in phone notes"></textarea>
+          </label>
+          <div class="form-actions">
+            <button type="submit">Save Inspection</button>
+            <button type="button" class="secondary" id="cancelInspectionEditBtn">Cancel</button>
+          </div>
+        </form>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h3>Saved Inspections</h3>
+          </div>
+          <div id="inspectionList" class="card-stack"></div>
+        </section>
       </section>
     </main>
   </div>
