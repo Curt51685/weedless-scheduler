@@ -578,6 +578,7 @@ function renderInspections() {
       <div class="inspection-notes">${escapeHtml(buildInspectionNotesSummary(inspection))}</div>
       <div class="job-actions">
         <button class="secondary" data-action="edit">Edit</button>
+        <button class="ghost" data-action="open-report">Open Report</button>
         <button class="ghost" data-action="draft-job">Create Draft Job</button>
         <button class="ghost" data-action="copy">Copy Summary</button>
         <button class="warn" data-action="delete">Delete</button>
@@ -585,6 +586,7 @@ function renderInspections() {
     `;
 
     card.querySelector('[data-action="edit"]').addEventListener("click", () => startInspectionEdit(inspection.id));
+    card.querySelector('[data-action="open-report"]').addEventListener("click", () => openInspectionReport(inspection.id));
     card.querySelector('[data-action="draft-job"]').addEventListener("click", () => createDraftJobFromInspection(inspection.id));
     card.querySelector('[data-action="copy"]').addEventListener("click", () => copyText(buildInspectionCopySummary(inspection), "Inspection summary copied"));
     card.querySelector('[data-action="delete"]').addEventListener("click", () => deleteInspection(inspection.id));
@@ -1392,6 +1394,29 @@ function buildInspectionCopySummary(inspection) {
   ].join("\n");
 }
 
+function buildInspectionCustomerShareText(inspection, customer, linkedJob) {
+  const customerName = customer?.name || inspection.customerName || "Customer";
+  return [
+    `Inspection Report for ${customerName}`,
+    `Inspection Date: ${inspection.inspectionDate}`,
+    `Inspection Type: ${linkedJob ? formatServiceLabel(linkedJob) : "Irrigation Inspection"}`,
+    "",
+    "Summary of findings:",
+    `- Zones observed: ${inspection.zoneCount || 0}`,
+    `- Zones with issues: ${inspection.issueZones || "None listed"}`,
+    `- Broken heads observed: ${inspection.brokenHeads || 0}`,
+    `- Controller: ${inspection.controllerType || "Not listed"}`,
+    "",
+    "Repairs that may be needed:",
+    inspection.repairsNeeded || "None listed",
+    "",
+    "Additional notes:",
+    inspection.notes || "None listed",
+    "",
+    "This inspection report is a summary of findings and is not a final quote.",
+  ].join("\n");
+}
+
 function buildInspectionDraftNotes(inspection) {
   return [
     `Drafted from irrigation inspection on ${inspection.inspectionDate}.`,
@@ -1404,6 +1429,222 @@ function buildInspectionDraftNotes(inspection) {
     inspection.materialsNeeded ? `Materials needed: ${inspection.materialsNeeded}` : "",
     inspection.notes ? `Inspection notes: ${inspection.notes}` : "",
   ].filter(Boolean).join("\n");
+}
+
+function openInspectionReport(inspectionId) {
+  const inspection = state.inspections.find((entry) => entry.id === inspectionId);
+  if (!inspection) return;
+
+  const customer = state.customers.find((entry) => entry.id === inspection.customerId);
+  const linkedJob = inspection.jobId ? findJobById(inspection.jobId) : null;
+  const customerName = customer?.name || inspection.customerName || "Customer";
+  const fileName = `${slugify(customerName)}-inspection-report-${inspection.inspectionDate || formatDateKey(new Date())}.doc`;
+  const reportHtml = buildInspectionReportDocument(inspection, customer, linkedJob);
+  const viewerHtml = buildInspectionReportViewerDocument(inspection, customer, linkedJob, reportHtml, fileName);
+  const blob = new Blob([viewerHtml], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank", "noopener,noreferrer");
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  showToast("Inspection report opened");
+}
+
+function buildInspectionReportDocument(inspection, customer, linkedJob) {
+  const customerName = customer?.name || inspection.customerName || "Customer";
+  const customerAddress = customer?.address || "";
+  const customerPhone = customer?.phone || "";
+  const findings = buildInspectionFindingsList(inspection);
+  const recommendedRepairs = listFromText(inspection.repairsNeeded);
+  const materialObservations = listFromText(inspection.materialsNeeded);
+  const extraNotes = listFromText(inspection.notes);
+  const serviceLabel = linkedJob ? formatServiceLabel(linkedJob) : "Irrigation Inspection";
+
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Inspection Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #1f2b1f; margin: 36px; line-height: 1.45; }
+    h1, h2, h3, p { margin: 0; }
+    .header { border-bottom: 2px solid #295b2d; padding-bottom: 12px; margin-bottom: 20px; }
+    .brand { color: #295b2d; font-size: 24px; font-weight: 700; }
+    .subhead { color: #5b675b; margin-top: 4px; }
+    .meta { margin: 18px 0 20px; }
+    .meta-row { margin: 4px 0; }
+    .section { margin-top: 22px; }
+    .section h2 { color: #295b2d; font-size: 18px; margin-bottom: 8px; }
+    ul { margin: 8px 0 0 22px; }
+    li { margin: 4px 0; }
+    .note { margin-top: 22px; padding: 12px 14px; background: #f4efe3; border-left: 4px solid #d99c2b; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">Weedless Lawn Care & Irrigation</div>
+    <div class="subhead">Customer Irrigation Inspection Report</div>
+  </div>
+
+  <div class="meta">
+    <p class="meta-row"><strong>Customer:</strong> ${escapeHtml(customerName)}</p>
+    <p class="meta-row"><strong>Address:</strong> ${escapeHtml(customerAddress || "Not listed")}</p>
+    <p class="meta-row"><strong>Phone:</strong> ${escapeHtml(customerPhone || "Not listed")}</p>
+    <p class="meta-row"><strong>Inspection Date:</strong> ${escapeHtml(formatLongDate(inspection.inspectionDate || formatDateKey(new Date())))}</p>
+    <p class="meta-row"><strong>Inspection Type:</strong> ${escapeHtml(serviceLabel)}</p>
+  </div>
+
+  <div class="section">
+    <h2>Inspection Summary</h2>
+    <p>This report summarizes what was observed during the irrigation inspection. It is intended to explain the current system condition and the repairs or improvements that may be needed. A separate quote can be prepared from these findings if requested.</p>
+  </div>
+
+  <div class="section">
+    <h2>Findings</h2>
+    <ul>${findings}</ul>
+  </div>
+
+  <div class="section">
+    <h2>Repairs That May Be Needed</h2>
+    <ul>${recommendedRepairs}</ul>
+  </div>
+
+  <div class="section">
+    <h2>Material / Equipment Observations</h2>
+    <ul>${materialObservations}</ul>
+  </div>
+
+  <div class="section">
+    <h2>Additional Notes</h2>
+    <ul>${extraNotes}</ul>
+  </div>
+
+  <div class="note">
+    This inspection report is not a final quote. It is a customer-friendly summary of the observed system condition and likely repair needs.
+  </div>
+</body>
+</html>`;
+}
+
+function buildInspectionReportViewerDocument(inspection, customer, linkedJob, reportHtml, fileName) {
+  const customerName = customer?.name || inspection.customerName || "Customer";
+  const shareText = buildInspectionCustomerShareText(inspection, customer, linkedJob);
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inspection Report</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #f4efe3; color: #1f2b1f; }
+    .toolbar { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; gap: 10px; padding: 14px 16px; background: #295b2d; }
+    .toolbar button { border: 0; border-radius: 999px; padding: 10px 14px; font-weight: 700; cursor: pointer; }
+    .toolbar .primary { background: #fff; color: #295b2d; }
+    .toolbar .secondary { background: #dceacc; color: #183c1b; }
+    .toolbar .ghost { background: #ece7d7; color: #183c1b; }
+    .toolbar .label { color: #fff; font-weight: 700; align-self: center; margin-right: auto; }
+    .page { max-width: 920px; margin: 0 auto; padding: 18px; }
+    .frame { background: #fffaf0; border-radius: 18px; box-shadow: 0 12px 28px rgba(34, 50, 36, 0.12); overflow: hidden; }
+    iframe { width: 100%; min-height: calc(100vh - 120px); border: 0; background: #fff; }
+    @media print {
+      .toolbar { display: none; }
+      .page { padding: 0; max-width: none; }
+      .frame { box-shadow: none; border-radius: 0; }
+      iframe { min-height: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <div class="label">Inspection Report: ${escapeHtml(customerName)}</div>
+    <button class="primary" onclick="printReport()">Print</button>
+    <button class="secondary" onclick="downloadWord()">Download Word</button>
+    <button class="ghost" onclick="shareReport()">Share / Send</button>
+  </div>
+  <div class="page">
+    <div class="frame">
+      <iframe id="reportFrame"></iframe>
+    </div>
+  </div>
+  <script>
+    const reportHtml = ${JSON.stringify(reportHtml)};
+    const fileName = ${JSON.stringify(fileName)};
+    const shareText = ${JSON.stringify(shareText)};
+    const shareTitle = ${JSON.stringify(`Inspection Report - ${customerName}`)};
+    const frame = document.getElementById("reportFrame");
+    frame.srcdoc = reportHtml;
+
+    function printReport() {
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    }
+
+    function downloadWord() {
+      const blob = new Blob([reportHtml], { type: "application/msword;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    async function shareReport() {
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: shareTitle, text: shareText });
+          return;
+        }
+      } catch {}
+
+      try {
+        await navigator.clipboard.writeText(shareText);
+        alert("Inspection report summary copied. You can paste it into a text or email.");
+      } catch {
+        alert("Sharing is not available on this device.");
+      }
+    }
+  </script>
+</body>
+</html>`;
+}
+
+function buildInspectionFindingsList(inspection) {
+  const findings = [
+    `Zone count observed: ${inspection.zoneCount || 0}`,
+    `Zones with issues: ${inspection.issueZones || "None listed"}`,
+    `Broken or damaged heads observed: ${inspection.brokenHeads || 0}`,
+    `Head types observed: ${inspection.headTypes || "Not listed"}`,
+    `Controller type: ${inspection.controllerType || "Not listed"}`,
+    `Controller location: ${inspection.controllerLocation || "Not listed"}`,
+  ];
+
+  if (inspection.leakDetected) findings.push("Leak symptoms were observed during the inspection.");
+  if (inspection.valveIssue) findings.push("A valve-related issue was identified during the inspection.");
+  if (inspection.wiringIssue) findings.push("A wiring-related issue was identified during the inspection.");
+  if (inspection.controllerIssue) findings.push("A controller-related issue was identified during the inspection.");
+
+  return findings.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+}
+
+function listFromText(text) {
+  const items = String(text || "")
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (!items.length) {
+    return "<li>None listed.</li>";
+  }
+
+  return items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+}
+
+function slugify(value) {
+  return String(value || "inspection")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "inspection";
 }
 
 function syncCustomerReferences(customer) {
