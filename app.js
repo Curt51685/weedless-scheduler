@@ -1464,18 +1464,18 @@ function buildInspectionReportDocument(inspection, customer, linkedJob) {
   <meta charset="utf-8">
   <title>Inspection Report</title>
   <style>
-    body { font-family: Arial, sans-serif; color: #1f2b1f; margin: 36px; line-height: 1.45; }
+    body { font-family: Arial, sans-serif; color: #1f2b1f; margin: 24px; line-height: 1.3; font-size: 14px; }
     h1, h2, h3, p { margin: 0; }
-    .header { border-bottom: 2px solid #295b2d; padding-bottom: 12px; margin-bottom: 20px; }
-    .brand { color: #295b2d; font-size: 24px; font-weight: 700; }
-    .subhead { color: #5b675b; margin-top: 4px; }
-    .meta { margin: 18px 0 20px; }
-    .meta-row { margin: 4px 0; }
-    .section { margin-top: 22px; }
-    .section h2 { color: #295b2d; font-size: 18px; margin-bottom: 8px; }
-    ul { margin: 8px 0 0 22px; }
-    li { margin: 4px 0; }
-    .note { margin-top: 22px; padding: 12px 14px; background: #f4efe3; border-left: 4px solid #d99c2b; }
+    .header { border-bottom: 2px solid #295b2d; padding-bottom: 10px; margin-bottom: 14px; }
+    .brand { color: #295b2d; font-size: 22px; font-weight: 700; }
+    .subhead { color: #5b675b; margin-top: 2px; }
+    .meta { margin: 12px 0 14px; }
+    .meta-row { margin: 2px 0; }
+    .section { margin-top: 14px; }
+    .section h2 { color: #295b2d; font-size: 16px; margin-bottom: 5px; }
+    ul { margin: 5px 0 0 18px; padding: 0; }
+    li { margin: 2px 0; }
+    .note { margin-top: 16px; padding: 9px 11px; background: #f4efe3; border-left: 4px solid #d99c2b; }
   </style>
 </head>
 <body>
@@ -1518,7 +1518,7 @@ function buildInspectionReportDocument(inspection, customer, linkedJob) {
   </div>
 
   <div class="note">
-    This inspection report is not a final quote. It is a customer-friendly summary of the observed system condition and likely repair needs.
+    This inspection report is not a final quote. It is a summary of the observed system condition and likely repair needs.
   </div>
 </body>
 </html>`;
