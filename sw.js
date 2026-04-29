@@ -1,4 +1,4 @@
-const CACHE_NAME = "weedless-scheduler-cache-v7";
+const CACHE_NAME = "weedless-scheduler-cache-v8";
 const APP_ASSETS = [
   "./",
   "./index.html",
@@ -26,16 +26,38 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
+  const requestUrl = new URL(event.request.url);
+  const isSameOrigin = requestUrl.origin === self.location.origin;
+  const isAppAsset = isSameOrigin && (
+    requestUrl.pathname.endsWith("/") ||
+    requestUrl.pathname.endsWith("/index.html") ||
+    requestUrl.pathname.endsWith("/styles.css") ||
+    requestUrl.pathname.endsWith("/app.js") ||
+    requestUrl.pathname.endsWith("/manifest.webmanifest") ||
+    requestUrl.pathname.endsWith("/icon.svg") ||
+    requestUrl.pathname.endsWith("/icon-maskable.svg")
+  );
+
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          return response;
-        })
-        .catch(() => caches.match("./index.html"));
-    }),
+    isAppAsset
+      ? fetch(event.request)
+          .then((response) => {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+            return response;
+          })
+          .catch(() =>
+            caches.match(event.request).then((cached) => cached || caches.match("./index.html")),
+          )
+      : caches.match(event.request).then((cached) => {
+          if (cached) return cached;
+          return fetch(event.request)
+            .then((response) => {
+              const copy = response.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+              return response;
+            })
+            .catch(() => caches.match("./index.html"));
+        }),
   );
 });
